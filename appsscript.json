@@ -1,0 +1,36 @@
+{
+  "timeZone": "Asia/Manila",
+  "dependencies": {
+    "enabledAdvancedServices": [{
+      "userSymbol": "BigQuery",
+      "serviceId": "bigquery",
+      "version": "v2"
+    }, {
+      "userSymbol": "Drive",
+      "serviceId": "drive",
+      "version": "v3"
+    }],
+    "libraries": [{
+      "userSymbol": "GDriveFilesAPI",
+      "libraryId": "1lfcUHwvEZMxcITSwZSL-chl12AbTISsgRJyoiRT_oxdYXyyU9KXzTmoe",
+      "version": "0",
+      "developmentMode": true
+    }, {
+      "userSymbol": "EmailSender",
+      "libraryId": "1o65v8pbJo1IPelB9FOQrzr5h8MLAV4xyZMwUwoxPINipS68l97-MmXRk",
+      "version": "0",
+      "developmentMode": true
+    }, {
+      "userSymbol": "CustomLogger",
+      "libraryId": "1wPcbVsnnNE1ifuiO0FCYMAtaRLpccxuDp-fsH_fqvIjvbmldAmSucn1R",
+      "version": "0",
+      "developmentMode": true
+    }]
+  },
+  "webapp": {
+    "access": "DOMAIN",
+    "executeAs": "USER_DEPLOYING"
+  },
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8"
+}
