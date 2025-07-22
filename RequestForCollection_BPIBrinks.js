@@ -55,8 +55,7 @@ function bpiBrinkCollectionsLogic() {
   });
 
   forCollections = excludePastRequests(forCollections, tomorrowDateString);
-  // Logger.log(forCollections);
-  // forCollections = excludePreviouslyRequested(forCollections, srvBank);
+  forCollections = excludeRecentlyCollected(forCollections, srvBank);
 
   if (forCollections.length > 0) {
     createHiddenWorksheetAndAddData(forCollections, srvBank);
