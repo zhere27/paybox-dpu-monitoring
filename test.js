@@ -95,7 +95,12 @@ function test_createHiddenWorksheetAndAddData(forCollections, srvBank) {
   
 }
 
-
+function test_getTodayAndTomorrowDates() {
+   const today = getTodayAndTomorrowDates();
+   console.log(today[0]);
+   console.log(today[1]);
+}
+ 
 
 // function isTomorrowHoliday(tomorrow) {
 //   const sheetName = "StoreName Mapping";

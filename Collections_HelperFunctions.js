@@ -3,21 +3,23 @@
 /**
  * Gets today's and tomorrow's dates in various formats
  * @return {Object} Object containing todayDate, tomorrowDate, todayDay, and tomorrowDateString
+ * @property {Date} todayDate - Today's date as a Date object
+ * @property {Date} tomorrowDate - Tomorrow's date as a Date object
+ * @property {string} todayDay - Today's day in "MMM d" format
+ * @property {string} tomorrowDateString - Tomorrow's day in "MMM d" format
  */
 function getTodayAndTomorrowDates() {
-  try {
-    const todayDate = new Date();
-    const todayDay = Utilities.formatDate(todayDate, Session.getScriptTimeZone(), "MMM d");
+  const timeZone = Session.getScriptTimeZone();
+  const todayDate = new Date();
+  const tomorrowDate = new Date(todayDate);
+  tomorrowDate.setDate(todayDate.getDate() + 1);
 
-    const tomorrowDate = new Date(todayDate);
-    tomorrowDate.setDate(todayDate.getDate() + 1);
-    const tomorrowDateString = Utilities.formatDate(tomorrowDate, Session.getScriptTimeZone(), "MMM d");
-
-    return { todayDate, tomorrowDate, todayDay, tomorrowDateString };
-  } catch (error) {
-    CustomLogger.logError(`Error in getTodayAndTomorrowDates(): ${error.message}`, PROJECT_NAME, 'getTodayAndTomorrowDates()');
-    throw error;
-  }
+  return {
+    todayDate,
+    tomorrowDate,
+    todayDay: Utilities.formatDate(todayDate, timeZone, "MMM d"),
+    tomorrowDateString: Utilities.formatDate(tomorrowDate, timeZone, "MMM d")
+  };
 }
 
 /**
