@@ -91,48 +91,55 @@ function test_createHiddenWorksheetAndAddData(forCollections, srvBank) {
     ["PLDT GAPAN", 100.0, "Brinks via BPI", "Brinks via BPI DPU Request - July 23, 2025 (Wednesday)", "For collection on Jul 23"]
   ];
 
+  forCollections.sort(function (a, b) {
+    const aAmount = parseFloat(a[1]);
+    const bAmount = parseFloat(b[1]);
+    if (isNaN(aAmount) && isNaN(bAmount)) return 0;
+    if (isNaN(aAmount)) return 1;
+    if (isNaN(bAmount)) return -1;
+    return bAmount - aAmount;
+  });
+
   createHiddenWorksheetAndAddData(forCollections, 'Brinks via BPI');
-  
+
 }
 
 function test_getTodayAndTomorrowDates() {
-   const today = getTodayAndTomorrowDates();
-   console.log(today[0]);
-   console.log(today[1]);
+  const today = getTodayAndTomorrowDates();
+  console.log(today[0]);
+  console.log(today[1]);
 }
- 
-
-// function isTomorrowHoliday(tomorrow) {
-//   const sheetName = "StoreName Mapping";
-//   const rangeStart = "G3";
-//   const rangeEnd = "I";
-//   const validHolidayTypes = ["Regular Holiday", "Special Non-working Holiday"];
-
-//   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
-//   if (!sheet) {
-//     throw new Error(`Sheet named "${sheetName}" not found.`);
-//   }
-
-//   const dataRange = sheet.getRange(`${rangeStart}:${rangeEnd}`);
-//   const data = dataRange.getValues();
-//   tomorrow.setDate(tomorrow.getDate());
-//   tomorrow.setHours(0, 0, 0, 0); // Ensure only the date is compared
-
-//   for (const row of data) {
-//     const holidayDate = row[0];
-//     const holidayType = row[2];
-
-//     if (holidayDate instanceof Date && holidayType && validHolidayTypes.includes(holidayType)) {
-//       if (holidayDate.getTime() === tomorrow.getTime()) {
-//         return true;
-//       }
-//     }
-//   }
-
-//   return false;
-// }
 
 
+function test_isTomorrowHoliday(tomorrow) {
+  const sheetName = "StoreName Mapping";
+  const rangeStart = "G3";
+  const rangeEnd = "I";
+  const validHolidayTypes = ["Regular Holiday", "Special Non-working Holiday"];
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+  if (!sheet) {
+    throw new Error(`Sheet named "${sheetName}" not found.`);
+  }
+
+  const dataRange = sheet.getRange(`${rangeStart}:${rangeEnd}`);
+  const data = dataRange.getValues();
+  tomorrow.setDate(tomorrow.getDate());
+  tomorrow.setHours(0, 0, 0, 0); // Ensure only the date is compared
+
+  for (const row of data) {
+    const holidayDate = row[0];
+    const holidayType = row[2];
+
+    if (holidayDate instanceof Date && holidayType && validHolidayTypes.includes(holidayType)) {
+      if (holidayDate.getTime() === tomorrow.getTime()) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
 
 function test() {
   // console.log(isTomorrowHoliday(new Date('2025-04-17')));

@@ -66,7 +66,17 @@ function processCollections(forCollections, tomorrowDate, emailTo, emailCc, emai
     }
 
     const collectionDate = new Date(tomorrowDate);
-    forCollections.sort((a, b) => a[0].toLowerCase().localeCompare(b[0].toLowerCase()));
+    //forCollections.sort((a, b) => a[0].toLowerCase().localeCompare(b[0].toLowerCase()));
+    
+    // Sort by amount in descending order, handling NaN values by placing them at the end
+    forCollections.sort(function (a, b) {
+      const aAmount = parseFloat(a[2]);
+      const bAmount = parseFloat(b[2]);
+      if (isNaN(aAmount) && isNaN(bAmount)) return 0;
+      if (isNaN(aAmount)) return 1;
+      if (isNaN(bAmount)) return -1;
+      return bAmount - aAmount;
+    });
 
     // Saturday collection limit is only applicable to Brinks via BPI
     if (collectionDate.getDay() === 6 && srvBank === 'Brinks via BPI') {
