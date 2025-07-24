@@ -1,6 +1,5 @@
 function onOpen() {
-  createMenu();
-  //x
+  // createMenu();
 };
 
 function onInstall(e) {
@@ -10,7 +9,7 @@ function onInstall(e) {
 function createMenu() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('Monitoring')
-    // .addItem('Refresh Stores', 'refreshStores')
+    .addItem('Refresh Stores', 'refreshStores')
     // .addItem('Process Hourly', 'processMonitoringHourly')
     // .addItem('Update Remarks','lookupLastTwoEntries')
     // .addItem('Sort', 'sortLatestPercentage')

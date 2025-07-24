@@ -492,7 +492,8 @@ function shouldIncludeForCollection(machineName, amountValue, translatedBusiness
       const specialConditions = [
         `for replacement of cassette on ${tomorrowDateString.toLowerCase()}`,
         `for collection on ${tomorrowDateString.toLowerCase()}`,
-        `resume collection on ${tomorrowDateString.toLowerCase()}`
+        `resume collection on ${tomorrowDateString.toLowerCase()}`,
+        `for revisit on ${tomorrowDateString.toLowerCase()}`
       ];
 
       if (specialConditions.some(condition => lastRequest.toLowerCase().includes(condition))) {
@@ -582,6 +583,8 @@ function shouldExcludeFromCollection(lastRequest, todayDay, machineName = null) 
       'manually collected',
       'for repair',
       'already collected',
+      'store is closed',
+      'store is not using the machine',
       todayDay
     ];
 
