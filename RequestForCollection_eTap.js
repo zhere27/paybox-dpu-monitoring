@@ -75,7 +75,7 @@ function eTapCollectionsLogic() {
       CustomLogger.logInfo('No eligible stores for collection tomorrow.',PROJECT_NAME, 'eTapCollectionsLogic');
     }
   } catch (error) {
-    CustomLogger.logError(`Error in eTapCollectionsLogic: ${error.message}`,PROJECT_NAME, 'eTapCollectionsLogic');
+    CustomLogger.logError(`Error in eTapCollectionsLogic: ${error.message}\nStack: ${error.stack}`,PROJECT_NAME, 'eTapCollectionsLogic');
   }
 
 }

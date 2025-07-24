@@ -66,7 +66,6 @@ function processCollections(forCollections, tomorrowDate, emailTo, emailCc, emai
     }
 
     const collectionDate = new Date(tomorrowDate);
-    //forCollections.sort((a, b) => a[0].toLowerCase().localeCompare(b[0].toLowerCase()));
     
     // Sort by amount in descending order, handling NaN values by placing them at the end
     forCollections.sort(function (a, b) {
@@ -92,7 +91,7 @@ function processCollections(forCollections, tomorrowDate, emailTo, emailCc, emai
       sendEmailCollection(forCollections, collectionDate, emailTo, emailCc, emailBcc, srvBank);
     }
   } catch (error) {
-    CustomLogger.logError(`Error in processCollections(): ${error.message}`, PROJECT_NAME, 'processCollections()');
+    CustomLogger.logError(`Error in processCollections(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'processCollections()');
     throw error;
   }
 }
@@ -144,7 +143,7 @@ function sendEmailCollection(machineData, collectionDate, emailTo, emailCc, emai
     });
     CustomLogger.logInfo(`Collection email sent for ${machineData.length} machines.`, PROJECT_NAME, 'sendEmailCollection()');
   } catch (error) {
-    CustomLogger.logError(`Error in sendEmailCollection: ${error.message}`, PROJECT_NAME, 'sendEmailCollection()');
+    CustomLogger.logError(`Error in sendEmailCollection: ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'sendEmailCollection()');
     throw error;
   }
 }
@@ -199,7 +198,7 @@ function sendEmailCancellation(forCancellation, collectionDate, emailTo, emailCc
     });
     CustomLogger.logInfo(`Cancellation email sent for ${forCancellation.length} machines.`, PROJECT_NAME, 'sendEmailCancellation()');
   } catch (error) {
-    CustomLogger.logError(`Error in sendEmailCancellation: ${error.message}`, PROJECT_NAME, 'sendEmailCancellation()');
+    CustomLogger.logError(`Error in sendEmailCancellation: ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'sendEmailCancellation()');
     throw error;
   }
 }
@@ -228,7 +227,7 @@ function replyToExistingThread(subject, messageBody) {
     });
     CustomLogger.logInfo(`Reply sent to the thread with subject: "${subject}"`, PROJECT_NAME, 'replyToExistingThread()');
   } catch (error) {
-    CustomLogger.logError(`Error in replyToExistingThread: ${error.message}`, PROJECT_NAME, 'replyToExistingThread()');
+    CustomLogger.logError(`Error in replyToExistingThread: ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'replyToExistingThread()');
     throw error;
   }
 }
@@ -280,7 +279,7 @@ function createHiddenWorksheetAndAddData(forCollections, srvBank) {
     CustomLogger.logInfo(`Updated for collection worksheet "${sheetName}" with ${numRows} rows.`, PROJECT_NAME, 'createHiddenWorksheetAndAddData()');
     Logger.log(`Updated for collection worksheet "${sheetName}" with ${numRows} rows.`);
   } catch (error) {
-    CustomLogger.logError(`Error in createHiddenWorksheetAndAddData(): ${error.message}`, PROJECT_NAME, 'createHiddenWorksheetAndAddData()');
+    CustomLogger.logError(`Error in createHiddenWorksheetAndAddData(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'createHiddenWorksheetAndAddData()');
     throw error;
   }
 }
@@ -310,7 +309,7 @@ function excludePastRequests(forCollections, tomorrowDateString) {
     return forCollections;
 
   } catch (error) {
-    CustomLogger.logError(`Error in excludePastRequests(): ${error.message}`, PROJECT_NAME, 'excludePastRequests()');
+    CustomLogger.logError(`Error in excludePastRequests(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'excludePastRequests()');
     throw error;
   }
 }
@@ -356,7 +355,7 @@ function excludePreviouslyRequested(forCollections, srvBank) {
 
     return filteredCollections;
   } catch (error) {
-    CustomLogger.logError(`Error in excludePreviouslyRequested(): ${error.message}`, PROJECT_NAME, 'excludePreviouslyRequested()');
+    CustomLogger.logError(`Error in excludePreviouslyRequested(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'excludePreviouslyRequested()');
     throw error;
   }
 }
@@ -402,10 +401,9 @@ function excludeRecentlyCollected(forCollections, srvBank) {
       }
     });
 
-
     return forCollections;
   } catch (error) {
-    CustomLogger.logError(`Error in excludeRecentlyCollected(): ${error.message}`, PROJECT_NAME, 'excludeRecentlyCollected()');
+    CustomLogger.logError(`Error in excludeRecentlyCollected(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'excludeRecentlyCollected()');
     throw error;
   }
 }
@@ -429,7 +427,7 @@ function getMachineNamesFromColumnA(sheet) {
     // Flatten the array and filter out empty cells
     return values.flat().filter(name => name);
   } catch (error) {
-    CustomLogger.logError(`Error in getMachineNamesFromColumnA(): ${error.message}`, PROJECT_NAME, 'getMachineNamesFromColumnA()');
+    CustomLogger.logError(`Error in getMachineNamesFromColumnA(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'getMachineNamesFromColumnA()');
     throw error;
   }
 }
@@ -559,7 +557,7 @@ function shouldIncludeForCollection(machineName, amountValue, translatedBusiness
     }
 
   } catch (error) {
-    CustomLogger.logError(`Error in shouldIncludeForCollection(): ${error.message}`, PROJECT_NAME, 'shouldIncludeForCollection()');
+    CustomLogger.logError(`Error in shouldIncludeForCollection(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'shouldIncludeForCollection()');
     return false;
   }
 }
@@ -594,7 +592,7 @@ function shouldExcludeFromCollection(lastRequest, todayDay, machineName = null) 
 
     return excluded;
   } catch (error) {
-    CustomLogger.logError(`Error in shouldExcludeFromCollection(): ${error.message}`, PROJECT_NAME, 'shouldExcludeFromCollection()');
+    CustomLogger.logError(`Error in shouldExcludeFromCollection(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'shouldExcludeFromCollection()');
     return false;
   }
 }
@@ -639,7 +637,7 @@ function isTomorrowHoliday(tomorrow) {
 
     return false;
   } catch (error) {
-    CustomLogger.logError(`Error in isTomorrowHoliday(): ${error.message}`, PROJECT_NAME, 'isTomorrowHoliday()');
+    CustomLogger.logError(`Error in isTomorrowHoliday(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'isTomorrowHoliday()');
     return false;
   }
 }

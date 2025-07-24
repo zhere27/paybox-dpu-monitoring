@@ -6,7 +6,7 @@ function bpiBrinkCollectionsLogic() {
   var { todayDate, tomorrowDate, todayDay, tomorrowDateString } = getTodayAndTomorrowDates();
 
   if (shouldSkipExecution(todayDate)) return;
-
+  
   if (isTomorrowHoliday(tomorrowDate)) {
     tomorrowDate.setDate(tomorrowDate.getDate() + 1);
   }
