@@ -19,7 +19,6 @@ function protectAllSheets() {
     // Check if the sheet already has a protection
     var protections = sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET);
     if (protections.length > 0) {
-      // CustomLogger.logInfo("Skipped (already protected): " + sheet.getName(), PROJECT_NAME, 'protectAllSheets()');
       return; // Skip this sheet
     }
 
@@ -33,7 +32,6 @@ function protectAllSheets() {
     CustomLogger.logInfo("Protected sheet: " + sheet.getName(), PROJECT_NAME, 'protectAllSheets()');
   });
 }
-
 
 function hideSheets() {
   var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();

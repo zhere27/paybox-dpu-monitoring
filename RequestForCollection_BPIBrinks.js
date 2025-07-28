@@ -5,6 +5,7 @@ function bpiBrinkCollectionsLogic() {
   const srvBank = 'Brinks via BPI';
   var { todayDate, tomorrowDate, todayDay, tomorrowDateString } = getTodayAndTomorrowDates();
 
+  //Skip script execution during weekends
   if (shouldSkipExecution(todayDate)) return;
   
   if (isTomorrowHoliday(tomorrowDate)) {

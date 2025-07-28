@@ -22,21 +22,21 @@ function createTimeDrivenTriggers() {
     .timeBased()
     .everyDays(1)
     .atHour(11)
-    .nearMinute(10)
+    .nearMinute(15)
     .create();
 
   ScriptApp.newTrigger('processMonitoringHourly')
     .timeBased()
     .everyDays(1)
     .atHour(15)
-    .nearMinute(10)
+    .nearMinute(15)
     .create();
 
   ScriptApp.newTrigger('processMonitoringHourly')
     .timeBased()
     .everyDays(1)
     .atHour(17)
-    .nearMinute(10)
+    .nearMinute(15)
     .create();
 
   ScriptApp.newTrigger('exportSheetAndSendEmail')
@@ -49,14 +49,14 @@ function createTimeDrivenTriggers() {
     .timeBased()
     .everyDays(1)
     .atHour(15)
-    .nearMinute(15)
+    .nearMinute(20)
     .create();
 
   ScriptApp.newTrigger('bpiCollectionsLogic')
     .timeBased()
     .everyDays(1)
     .atHour(15)
-    .nearMinute(15)
+    .nearMinute(20)
     .create();
 
   ScriptApp.newTrigger('eTapCollectionsLogic')
@@ -70,7 +70,7 @@ function createTimeDrivenTriggers() {
     .timeBased()
     .everyDays(1)
     .atHour(15)
-    .nearMinute(45)
+    .nearMinute(30)
     .create();
 
   ScriptApp.newTrigger('apeirosCollectionsLogic')
