@@ -38,12 +38,13 @@ function refresh(file) {
   sheet.insertColumnsAfter(16, 1);
   sheet.deleteColumns(3, 1);
 
+  const storesSheet = "https://docs.google.com/spreadsheets/d/1TJ10XqwS_cTQfkxKKWJaE5zhBdE2pDgIdZ_Zw9JQD_U";
   const formulaSparkline = `=SPARKLINE(INDIRECT("C"&ROW()&":P"&ROW()))`;
   const formulaNoMovement = '=IF(INDIRECT("C"&ROW())<>"",IF(COUNTIF(INDIRECT("C"&ROW()&":P"&ROW()),"<>"& INDIRECT("C"&ROW()))=0, "No changes", ""),"")';
   const formulaCollectedStores = '=IFNA(VLOOKUP(A2,\'Collected Yesterday\'!B:B,1,false))';
-  const formulaFrequency = '=VLOOKUP(A2,IMPORTRANGE("https://docs.google.com/spreadsheets/d/1TJ10XqwS_cTQfkxKKWJaE5zhBdE2pDgIdZ_Zw9JQD_U/edit#gid=0","Stores!C:X"),7,FALSE)';
-  const formulaServicingBank = '=VLOOKUP(A2,IMPORTRANGE("https://docs.google.com/spreadsheets/d/1TJ10XqwS_cTQfkxKKWJaE5zhBdE2pDgIdZ_Zw9JQD_U/edit#gid=0","Stores!C:X"),6,FALSE)';
-  const formulaBusinessDays = '=VLOOKUP(A2,IMPORTRANGE("https://docs.google.com/spreadsheets/d/1TJ10XqwS_cTQfkxKKWJaE5zhBdE2pDgIdZ_Zw9JQD_U/edit#gid=0","Stores!C:X"),3,FALSE)';
+  const formulaFrequency = `=VLOOKUP(A2,IMPORTRANGE("${storesSheet}","Stores!C:X"),7,FALSE)`;
+  const formulaServicingBank = `=VLOOKUP(A2,IMPORTRANGE("${storesSheet}","Stores!C:X"),6,FALSE)`;
+  const formulaBusinessDays = `=VLOOKUP(A2,IMPORTRANGE("${storesSheet}","Stores!C:X"),3,FALSE)`;
 
   sheet.getRange(`Q2:Q${lastRow}`).clear();
   SpreadsheetApp.flush();

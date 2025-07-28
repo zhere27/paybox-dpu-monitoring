@@ -284,6 +284,15 @@ function createHiddenWorksheetAndAddData(forCollections, srvBank) {
   }
 }
 
+/**
+ * Filters out past collection requests from the provided array, keeping only requests for the specified tomorrow date.
+ * Also sorts the resulting array by machine name.
+ *
+ * @param {Array<Array>} forCollections - The array of collection request items, where each item is an array and the machine name is at index 0, and the collection info is at index 4.
+ * @param {string} tomorrowDateString - The date string representing tomorrow, used to filter requests.
+ * @returns {Array<Array>} The filtered and sorted array of collection requests.
+ * @throws {Error} If an error occurs during filtering or sorting.
+ */
 function excludePastRequests(forCollections, tomorrowDateString) {
   try {
     if (!forCollections || forCollections.length === 0) {
@@ -314,6 +323,14 @@ function excludePastRequests(forCollections, tomorrowDateString) {
   }
 }
 
+/**
+ * Filters out collections that have already been requested, based on machine names listed in a specific sheet.
+ *
+ * @param {Array<Array<any>>} forCollections - The list of collections to filter. Each collection is assumed to be an array, with the machine name in the first element.
+ * @param {string} srvBank - The bank/service identifier used to determine the sheet name (e.g., "For Collection -{srvBank}").
+ * @returns {Array<Array<any>>} The filtered list of collections, excluding those that have already been requested.
+ * @throws {Error} If an error occurs during processing.
+ */
 function excludePreviouslyRequested(forCollections, srvBank) {
   try {
     if (!forCollections || forCollections.length === 0) {
@@ -360,6 +377,13 @@ function excludePreviouslyRequested(forCollections, srvBank) {
   }
 }
 
+/**
+ * Removes all occurrences of specified excluded items from the given collections array.
+ *
+ * @param {Array} forCollections - The array of collections to filter.
+ * @param {Array} excludeExpiredForCollections - The array of items to exclude from forCollections.
+ * @returns {Array} The filtered array with excluded items removed.
+ */
 function removeExcludedCollections(forCollections, excludeExpiredForCollections) {
   excludeExpiredForCollections.forEach(excludeItem => {
     let index;
@@ -370,6 +394,16 @@ function removeExcludedCollections(forCollections, excludeExpiredForCollections)
   return forCollections;
 }
 
+/**
+ * Filters out machines from the forCollections array that have been recently collected,
+ * based on data from the "For Collection -{srvBank}" sheet in the active spreadsheet.
+ * Machines are excluded if their name appears in column A and column F has a TRUE value.
+ *
+ * @param {Array<Array<any>>} forCollections - Array of collections to filter. Each collection is expected to be an array where the first element is the machine name.
+ * @param {string} srvBank - The service bank identifier used to select the appropriate sheet.
+ * @returns {Array<Array<any>>} The filtered array of collections, excluding recently collected machines.
+ * @throws {Error} If an error occurs during processing.
+ */
 function excludeRecentlyCollected(forCollections, srvBank) {
   try {
     if (!forCollections || forCollections.length === 0) {
@@ -645,6 +679,14 @@ function isTomorrowHoliday(tomorrow) {
   }
 }
 
+/**
+ * Returns the custom abbreviation for the day of the week of the given date.
+ * If no date is provided, uses today's date.
+ * Custom abbreviations: ["Sun.", "M.", "T.", "W.", "Th.", "F.", "Sat."].
+ *
+ * @param {Date|string} [dateInput] - The input date as a Date object or a date string. If omitted, uses the current date.
+ * @returns {string} The custom abbreviation for the day of the week.
+ */
 function getTomorrowDayCustomFormat(dateInput) {
   // Define the custom day abbreviations
   const customDays = ["Sun.", "M.", "T.", "W.", "Th.", "F.", "Sat."];
