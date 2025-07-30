@@ -724,19 +724,19 @@ function normalizeSpaces(inputString) {
   return inputString.trim().replace(/\s+/g, ' ');
 }
 
+/**
+ * Skips function execution based on a predefined UTC date range.
+ * The function will not execute if the current UTC date falls within the specified range.
+ */
 function skipFunction() {
-  // Define the UTC date range
-  const startDate = new Date(2025, 4, 30, 0, 0, 0); // May 30, 2025, 00:00:00 UTC
-  const endDate = new Date(2025, 5, 27, 23, 59, 0);  // June 27, 2025, 23:59:00 UTC
+  const startDateUTC = Date.UTC(2025, 4, 30, 0, 0, 0);   // May 30, 2025, 00:00:00 UTC (Months are 0-indexed)
+  const endDateUTC = Date.UTC(2025, 5, 27, 23, 59, 59);  // June 27, 2025, 23:59:59 UTC
 
-  // Get the current UTC date and time
-  const now = new Date();
-  const nowUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(),
-    now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds()));
+  const nowUTC = Date.now(); // Get current timestamp in milliseconds since epoch UTC
 
-  // Check if the current date is within the range
-  if (nowUTC >= startDate && nowUTC <= endDate) {
+  // Check if the current UTC timestamp is within the predefined range.
+  if (nowUTC >= startDateUTC && nowUTC <= endDateUTC) {
     CustomLogger.logInfo('Function execution skipped due to date restriction.', PROJECT_NAME, 'skipFunction()');
-    return; // Exit the function
+    return; // Skip execution if within the restricted time range.
   }
 }

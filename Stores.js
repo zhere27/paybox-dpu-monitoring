@@ -7,7 +7,7 @@ function refreshStores() {
   sheet.getRange("A2:A" + lastRow).clear().setFontFamily('Century Gothic').setFontSize(9);
 
   try {
-    const rows = getStores();
+    const rows = getStoreList();
 
     if (!rows || rows.length === 0) {
       Logger.log("No data to populate the new sheet.");
@@ -30,5 +30,5 @@ function refreshStores() {
     Logger.log("Error populating sheet: " + e.message);
   }
 
-  sortRange();
+  sortLatestPercentage();
 }

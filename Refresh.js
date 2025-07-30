@@ -38,7 +38,7 @@ function refresh(file) {
   sheet.insertColumnsAfter(16, 1);
   sheet.deleteColumns(3, 1);
 
-  const storesSheet = "https://docs.google.com/spreadsheets/d/1TJ10XqwS_cTQfkxKKWJaE5zhBdE2pDgIdZ_Zw9JQD_U";
+  const storesSheet = `${storeSheetUrl}`;
   const formulaSparkline = `=SPARKLINE(INDIRECT("C"&ROW()&":P"&ROW()))`;
   const formulaNoMovement = '=IF(INDIRECT("C"&ROW())<>"",IF(COUNTIF(INDIRECT("C"&ROW()&":P"&ROW()),"<>"& INDIRECT("C"&ROW()))=0, "No changes", ""),"")';
   const formulaCollectedStores = '=IFNA(VLOOKUP(A2,\'Collected Yesterday\'!B:B,1,false))';
@@ -132,16 +132,13 @@ function refresh(file) {
 
   hideColumnsCtoH();
 
-  //Set Row Height
-  setRows(sheet, lastRow);
+  //Set row height and vertical alignment
+  setRowsHeightAndAlignment(sheet, lastRow);
 
-  //Sort
+  //Sort the range based on the latest percentage
   sortLatestPercentage();
 
   SpreadsheetApp.flush();
-
-  //Protect Sheets
-  // protectAllSheets();
 
   //Delete old sheets
   deleteOldSheet();
@@ -185,17 +182,17 @@ function populateNewSheet(sheetName = null, now = null) {
   try {
     const trnDate = Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM-dd");
     const hours = String(now.getHours()).padStart(2, '0');
-    const rows = populateSheet(trnDate, `${hours}:00:00`);
+    const lastMonitoringHours = getLastMonitoringHours(trnDate, `${hours}:00:00`);
 
-    if (!rows || rows.length === 0) {
+    if (!lastMonitoringHours || lastMonitoringHours.length === 0) {
       CustomLogger.logError("No data to populate the new sheet.", PROJECT_NAME, 'populateNewSheet()');
       throw new Error("No data to populate the new sheet.");
     }
 
     // Check the structure of the rows array
-    if (rows.length > 0 && rows[0].f && rows[0].f.length > 0) {
+    if (lastMonitoringHours.length > 0 && lastMonitoringHours[0].f && lastMonitoringHours[0].f.length > 0) {
       // Populate the sheet with the mapped values
-      newSheet.getRange(1, 1, rows.length, rows[0].f.length).setValues(rows.map(row => row.f.map(cell => cell.v)));
+      newSheet.getRange(1, 1, lastMonitoringHours.length, lastMonitoringHours[0].f.length).setValues(lastMonitoringHours.map(row => row.f.map(cell => cell.v)));
     } else {
       CustomLogger.logError("Rows array is not in the expected format.", PROJECT_NAME, 'populateNewSheet()');
       throw new Error("Rows array is not in the expected format.");
@@ -210,8 +207,8 @@ function sortLatestPercentage() {
   const spreadSheet = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = spreadSheet.getSheetByName("Kiosk %");
 
-  const range = sheet.getRange("A2:Z");
-  const columnToSortBy = 16;
+  const range = sheet.getRange("A2:S");
+  const columnToSortBy = 16; // Column to sort by (percentage)
 
   range.sort({ column: columnToSortBy, ascending: false });
 
@@ -335,14 +332,19 @@ function deleteOldSheet() {
   }
 }
 
-
-function setRows(sheet, lastRow) {
-  // Loop through the rows and set the height and vertical alignment
-  for (var i = 2; i <= lastRow; i++) {
-    // Set the row height to 30
-    sheet.setRowHeight(i, 30);
-  }
+/**
+ * Sets the row height and vertical alignment for the specified sheet and last row.
+ *
+ * @param {*} sheet
+ * @param {*} lastRow
+ */
+function setRowsHeightAndAlignment(sheet, lastRow) {
+  // Set the row height to 30 for all rows at once
+   {{ sheet.setRowHeights(1, lastRow, 30); }}
 
   // Set the vertical alignment to Top for the specified range
-  sheet.getRange(`A2:Z${lastRow}`).setVerticalAlignment("top");
+  sheet.getRange(`A2:Q${lastRow}`).setVerticalAlignment("middle");
+
+  // Set the vertical alignment to Top for the specified range
+  sheet.getRange(`R2:Z${lastRow}`).setVerticalAlignment("top");
 }

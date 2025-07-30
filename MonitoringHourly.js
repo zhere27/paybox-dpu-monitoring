@@ -212,9 +212,11 @@ function processLine(line, trnDate) {
 }
 
 /**
- * Formats date time to ISO string
- * @param {Date} date - The date to format
- * @return {string} - Formatted date time
+ * Formats a date object into a string in the format YYYY-MM-DD HH:MM:SS
+ *
+ * @param {*} date
+ * @return {*} A string representing the date in the format YYYY-MM-DD HH:MM:SS.
+ * @throws {Error} If the input is not a valid Date object.
  */
 function formatDateTime(date) {
   if (isNaN(date.getMonth())) {
