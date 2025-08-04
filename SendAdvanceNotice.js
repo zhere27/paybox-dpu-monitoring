@@ -24,7 +24,7 @@ function sendAdvancedNotice() {
 
     if (shouldExcludeFromCollection(lastRequest, todayDay)) { return; }
 
-    const eligibleMachines = new Set(['SMART SM SAN PABLO', 'SMART SM LAS PINAS', 'SMART SM EAST ORTIGAS']);
+    const eligibleMachines = new Set(['SMART SM SAN PABLO', 'SMART SM LAS PINAS', 'SMART SM EAST ORTIGAS', 'SMART SM MUNTINLUPA']);
 
     if (eligibleMachines.has(machineName)) {
       const srvBank = 'eTap';

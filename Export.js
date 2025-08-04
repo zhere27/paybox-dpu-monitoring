@@ -3,12 +3,13 @@ function exportSheetAndSendEmail() {
 
   var retries = 3;
   var sheetName = "For Sending";
-  // var emailTo = "egalcantara@multisyscorp.com";
-  // var emailCc = "egalcantara@multisyscorp.com";
+  var subject = "[AUTO] Paybox DPU Monitoring";
 
   var emailTo = "RBEspayos@smart.com.ph, RACagbay@smart.com.ph, mvolbara@pldt.com.ph, avdeleon@pldt.com.ph, cvcabanilla@multisyscorp.com ";
   var emailCc = "AABenter@smart.com.ph, rtevangelista@pldt.com.ph, dmblanco@pldt.com.ph, nplimpiada@pldt.com.ph, kbmila@multisyscorp.com, npsandiego@pldt.com.ph, egalcantara@multisyscorp.com, support@paybox.ph";
-  var subject = "[AUTO] Paybox DPU Monitoring";
+
+  // var emailTo = "egalcantara@multisyscorp.com";
+  // var emailCc = "egalcantara@multisyscorp.com";
 
   var day = new Date().getDay();
   if (day === 0 || day === 6) { // 0 = Sunday, 6 = Saturday
