@@ -14,6 +14,4 @@ function createMenu() {
     // .addItem('Update Remarks','lookupLastTwoEntries')
     // .addItem('Sort', 'sortLatestPercentage')
     .addToUi();
-
-  logger = console.log.bind(console); // Redirect console.log to Logger.log
 }

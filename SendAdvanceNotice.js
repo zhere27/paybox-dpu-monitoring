@@ -6,7 +6,7 @@ function sendAdvancedNotice() {
   const [machineNames, percentValues, amountValues, collectionPartners, collectionSchedules, , lastRequests, businessDays] = kioskData;
   const formattedDate = Utilities.formatDate(tomorrowDate, Session.getScriptTimeZone(), "MMMM d, yyyy (EEEE)");
 
-  var emailTo = "CJRonquillo@smart.com.ph, RDCorcega@smart.com.ph";
+  var emailTo = "";
   var emailCc = "RBEspayos@smart.com.ph, RACagbay@smart.com.ph";
   var emailBcc = "Erwin Alcantara <egalcantara@multisyscorp.com>"
 
@@ -26,12 +26,28 @@ function sendAdvancedNotice() {
 
     const eligibleMachines = new Set(['SMART SM SAN PABLO', 'SMART SM LAS PINAS', 'SMART SM EAST ORTIGAS', 'SMART SM MUNTINLUPA']);
 
+    if (machineName === 'SMART SM EAST ORTIGAS') {
+      emailTo = "rbargano@smart.com.ph, kmabad@smart.com.ph, madelacruz@smart.com.ph, jrgragasin@smart.com.ph";
+    } else if (machineName === 'SMART SM MUNTINLUPA') {
+      emailTo = "CYArcinas@smart.com.ph, EBPadrigon@smart.com.ph";
+    } else if (machineName === 'SMART SM SAN PABLO') {
+      emailTo = "cjronquillo@smart.com.ph, rdcorcega@smart.com.ph";
+    } else if (machineName === 'SMART SM LAS PINAS') {
+      emailTo = "jajariel@smart.com.ph, srsantillan@smart.com.ph, crcarubio@smart.com.ph, andiongco+laspinas@smart.com.ph";
+    }
+
     if (eligibleMachines.has(machineName)) {
       const srvBank = 'eTap';
+
       if (shouldIncludeForCollection(machineName, amountValue, translatedBusinessDays, tomorrowDate, tomorrowDateString, todayDate, lastRequest, srvBank)) {
+        if (emailTo !== "") {
+          CustomLogger.logInfo(`Sending advance notice email to ${emailTo} for ${machineName}...`, PROJECT_NAME, 'sendAdvancedNotice()');
+        }
+
         sendEmail(machineName, tomorrowDate);
       }
     }
+
 
   });
 

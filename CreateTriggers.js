@@ -7,7 +7,8 @@ function createTimeDrivenTriggers() {
   deleteExistingTriggers('bpiBrinkCollectionsLogic');
   deleteExistingTriggers('bpiCollectionsLogic');
   deleteExistingTriggers('apeirosCollectionsLogic');
-  // deleteExistingTriggers('processCancellationRequest');
+  deleteExistingTriggers('resetCollectionRequests');
+  
 
   deleteExistingTriggers('sendAdvancedNotice');
 
@@ -79,12 +80,12 @@ function createTimeDrivenTriggers() {
     .atHour(17)
     .create();
 
-  // ScriptApp.newTrigger('processCancellationRequest')
-  //   .timeBased()
-  //   .everyDays(1)
-  //   .atHour(17)
-  //   .nearMinute(45)
-  //   .create();
+  ScriptApp.newTrigger('resetCollectionRequests')
+    .timeBased()
+    .everyDays(1)
+    .atHour(17)
+    .nearMinute(45)
+    .create();
 
 }
 

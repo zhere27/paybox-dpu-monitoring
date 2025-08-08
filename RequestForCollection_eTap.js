@@ -13,7 +13,7 @@ function eTapCollectionsLogic() {
     const ENV_EMAIL_RECIPIENTS = {
       production: {
         to: "christian@etapinc.com,jayr@etapinc.com,rodison.carapatan@etapinc.com,arnel@etapinc.com,ian.estrella@etapinc.com,roldan@etapinc.com,dante@etapinc.com,ramun.hamtig@etapinc.com,jellymae.osorio@etapinc.com,rojane@etapinc.com, A.jloro@etapinc.com",
-        cc: "reinier@etapinc.com,miguel@etapinc.com,alvie@etapinc.com,rojane@etapinc.com,laila@etapinc.com,johnmarco@etapinc.com,ghie@etapinc.com, etap-recon@etapinc.com, Erwin Alcantara <egalcantara@multisyscorp.com>, cvcabanilla@multisyscorp.com",
+        cc: "reinier@etapinc.com,miguel@etapinc.com,alvie@etapinc.com,rojane@etapinc.com,laila@etapinc.com,johnmarco@etapinc.com,ghie@etapinc.com, etap-recon@etapinc.com, Erwin Alcantara <egalcantara@multisyscorp.com>, cvcabanilla@multisyscorp.com, gmmrectin@multisyscorp.com",
         bcc: "mvolbara@pldt.com.ph"
       },
       testing: {

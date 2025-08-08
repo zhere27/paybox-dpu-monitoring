@@ -68,7 +68,7 @@ AND created_at <= '${trnDate} ${trnTime.substring(0, 2)}:59:59';
   } catch (error) {
     throw new Error(
       ("Failed to get last monitoring hours data: " + error.message) &
-        ("\nStack Trace: " + error.stack)
+      ("\nStack Trace: " + error.stack)
     );
   }
 }
@@ -101,7 +101,7 @@ function getLastHourly() {
   } catch (error) {
     throw new Error(
       ("Failed to get last hourly data: " + error.message) &
-        ("\nStack Trace: " + error.stack)
+      ("\nStack Trace: " + error.stack)
     );
   }
 }
@@ -127,7 +127,7 @@ WHERE status = TRUE AND NOT machine_name IN ('Multisys Paybox Live','Test Kiosk 
   } catch (error) {
     throw new Error(
       ("Failed to retrieve store list:" + error.message) &
-        ("\nStack Trace: " + error.stack)
+      ("\nStack Trace: " + error.stack)
     );
   }
 }
@@ -320,7 +320,7 @@ function getKioskPercentage() {
   ];
 }
 
-function getKioskData(srvBank) {
+function getKioskData(srvBank = null) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = spreadsheet.getSheetByName("Kiosk %");
 
@@ -340,8 +340,8 @@ function getKioskData(srvBank) {
       index,
       partner: partner[0],
     }))
-    .filter((item) => item.partner === srvBank)
-    .map((item) => item.index);
+    .filter(item => srvBank == null || item.partner === srvBank)
+    .map(item => item.index);
 
   // Map each field according to the filtered indices
   const filteredMachineNames = filteredData.map((i) => machineNames[i]);

@@ -10,6 +10,7 @@
  */
 function getTodayAndTomorrowDates() {
   const timeZone = Session.getScriptTimeZone();
+  // const todayDate = new Date(2025,7,4); //August 4, 2025
   const todayDate = new Date();
   const tomorrowDate = new Date(todayDate);
   tomorrowDate.setDate(todayDate.getDate() + 1);
@@ -18,7 +19,7 @@ function getTodayAndTomorrowDates() {
     todayDate,
     tomorrowDate,
     todayDay: Utilities.formatDate(todayDate, timeZone, "MMM d"),
-    tomorrowDateString: Utilities.formatDate(tomorrowDate, timeZone, "MMM d")
+    tomorrowDateString: Utilities.formatDate(tomorrowDate, timeZone, "MMM d"),
   };
 }
 
@@ -40,8 +41,13 @@ function formatDate(date, pattern) {
 function shouldSkipExecution(todayDate) {
   const day = todayDate.getDay();
 
-  if (day === 0 || day === 6) { // 0-Sunday, 6-Saturday
-    CustomLogger.logInfo("Skipping execution on weekends.", PROJECT_NAME, 'shouldSkipExecution()');
+  if (day === 0 || day === 6) {
+    // 0-Sunday, 6-Saturday
+    CustomLogger.logInfo(
+      "Skipping execution on weekends.",
+      PROJECT_NAME,
+      "shouldSkipExecution()"
+    );
     return true;
   }
   return false;
@@ -58,40 +64,84 @@ function shouldSkipExecution(todayDate) {
  * @param {string} emailBcc - Email recipients (bcc)
  * @param {string} srvBank - Service bank
  */
-function processCollections(forCollections, tomorrowDate, emailTo, emailCc, emailBcc, srvBank) {
+function processCollections(
+  forCollections,
+  tomorrowDate,
+  emailTo,
+  emailCc,
+  emailBcc,
+  srvBank
+) {
   try {
     if (!forCollections || forCollections.length === 0) {
-      CustomLogger.logInfo("No collections to process.", PROJECT_NAME, 'processCollections()');
+      CustomLogger.logInfo(
+        "No collections to process.",
+        PROJECT_NAME,
+        "processCollections()"
+      );
       return;
     }
 
     const collectionDate = new Date(tomorrowDate);
-    
-    // Sort by amount in descending order, handling NaN values by placing them at the end
-    forCollections.sort(function (a, b) {
-      const aAmount = parseFloat(a[2]);
-      const bAmount = parseFloat(b[2]);
-      if (isNaN(aAmount) && isNaN(bAmount)) return 0;
-      if (isNaN(aAmount)) return 1;
-      if (isNaN(bAmount)) return -1;
-      return bAmount - aAmount;
-    });
+
+    if (srvBank === "Brinks via BPI") {
+      // Sort by amount in descending order, handling NaN values by placing them at the end
+      forCollections.sort(function (a, b) {
+        const aAmount = parseFloat(a[2]);
+        const bAmount = parseFloat(b[2]);
+        if (isNaN(aAmount) && isNaN(bAmount)) return 0;
+        if (isNaN(aAmount)) return 1;
+        if (isNaN(bAmount)) return -1;
+        return bAmount - aAmount;
+      });
+    } else {
+      // sort forCollections by machineName
+      forCollections.sort(function (a, b) {
+        return a[0].localeCompare(b[0]);
+      });
+
+    }
 
     // Saturday collection limit is only applicable to Brinks via BPI
-    if (collectionDate.getDay() === 6 && srvBank === 'Brinks via BPI') {
+    if (collectionDate.getDay() === 6 && srvBank === "Brinks via BPI") {
       if (forCollections.length > 4) {
         const collectionsForMonday = forCollections.slice(4);
         const collectionDateForMonday = new Date();
         collectionDateForMonday.setDate(collectionDateForMonday.getDate() + 3);
-        sendEmailCollection(collectionsForMonday, collectionDateForMonday, emailTo, emailCc, emailBcc, srvBank);
+        sendEmailCollection(
+          collectionsForMonday,
+          collectionDateForMonday,
+          emailTo,
+          emailCc,
+          emailBcc,
+          srvBank
+        );
       }
 
-      sendEmailCollection(forCollections.slice(0, 4), collectionDate, emailTo, emailCc, emailBcc, srvBank);
+      sendEmailCollection(
+        forCollections.slice(0, 4),
+        collectionDate,
+        emailTo,
+        emailCc,
+        emailBcc,
+        srvBank
+      );
     } else {
-      sendEmailCollection(forCollections, collectionDate, emailTo, emailCc, emailBcc, srvBank);
+      sendEmailCollection(
+        forCollections,
+        collectionDate,
+        emailTo,
+        emailCc,
+        emailBcc,
+        srvBank
+      );
     }
   } catch (error) {
-    CustomLogger.logError(`Error in processCollections(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'processCollections()');
+    CustomLogger.logError(
+      `Error in processCollections(): ${error.message}\nStack: ${error.stack}`,
+      PROJECT_NAME,
+      "processCollections()"
+    );
     throw error;
   }
 }
@@ -107,10 +157,21 @@ function processCollections(forCollections, tomorrowDate, emailTo, emailCc, emai
  * @param {string} emailBcc - Email recipients (bcc)
  * @param {string} srvBank - Service bank
  */
-function sendEmailCollection(machineData, collectionDate, emailTo, emailCc, emailBcc, srvBank) {
+function sendEmailCollection(
+  machineData,
+  collectionDate,
+  emailTo,
+  emailCc,
+  emailBcc,
+  srvBank
+) {
   try {
     if (!machineData || machineData.length === 0) {
-      CustomLogger.logInfo("No machine data to send in email.", PROJECT_NAME, 'sendEmailCollection()');
+      CustomLogger.logInfo(
+        "No machine data to send in email.",
+        PROJECT_NAME,
+        "sendEmailCollection()"
+      );
       return;
     }
 
@@ -118,11 +179,15 @@ function sendEmailCollection(machineData, collectionDate, emailTo, emailCc, emai
     const subject = `${srvBank} DPU Request - ${formattedDate}`;
 
     let body;
-    if (machineData.some(item => item[0] === 'PLDT BANTAY' || item[0] === 'SMART VIGAN')) {
+    if (
+      machineData.some(
+        (item) => item[0] === "PLDT BANTAY" || item[0] === "SMART VIGAN"
+      )
+    ) {
       body = `
         Hi All,<br><br>
         Good day! Please schedule <b>collection</b> on ${formattedDate} for the following stores:<br><br>
-        ${machineData.map(row => row[0]).join('<br>')}<br><br>
+        ${machineData.map((row) => row[0]).join("<br>")}<br><br>
         For <b>PLDT BANTAY and SMART VIGAN</b>, kindly collect it on the same day.<br><br>
         *** Please acknowledge this email. ****<br><br>${emailSignature}
       `;
@@ -130,20 +195,28 @@ function sendEmailCollection(machineData, collectionDate, emailTo, emailCc, emai
       body = `
         Hi All,<br><br>
         Good day! Please schedule <b>collection</b> on ${formattedDate} for the following stores:<br><br>
-        ${machineData.map(row => row[0]).join('<br>')}<br><br>
+        ${machineData.map((row) => row[0]).join("<br>")}<br><br>
         *** Please acknowledge this email. ****<br><br>${emailSignature}
       `;
     }
 
-    GmailApp.sendEmail(emailTo, subject, '', {
+    GmailApp.sendEmail(emailTo, subject, "", {
       cc: emailCc,
       bcc: emailBcc,
       htmlBody: body,
-      from: "support@paybox.ph"
+      from: "support@paybox.ph",
     });
-    CustomLogger.logInfo(`Collection email sent for ${machineData.length} machines.`, PROJECT_NAME, 'sendEmailCollection()');
+    CustomLogger.logInfo(
+      `Collection email sent for ${machineData.length} machines.`,
+      PROJECT_NAME,
+      "sendEmailCollection()"
+    );
   } catch (error) {
-    CustomLogger.logError(`Error in sendEmailCollection: ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'sendEmailCollection()');
+    CustomLogger.logError(
+      `Error in sendEmailCollection: ${error.message}\nStack: ${error.stack}`,
+      PROJECT_NAME,
+      "sendEmailCollection()"
+    );
     throw error;
   }
 }
@@ -158,11 +231,23 @@ function sendEmailCollection(machineData, collectionDate, emailTo, emailCc, emai
  * @param {string} srvBank - Service bank
  * @param {boolean} isSaturday - Whether it's Saturday
  */
-function sendEmailCancellation(forCancellation, collectionDate, emailTo, emailCc, emailBcc, srvBank, isSaturday) {
+function sendEmailCancellation(
+  forCancellation,
+  collectionDate,
+  emailTo,
+  emailCc,
+  emailBcc,
+  srvBank,
+  isSaturday
+) {
   try {
     // Cancel sending email if no records in the forCancellation
     if (!forCancellation || forCancellation.length === 0) {
-      CustomLogger.logInfo("No cancellations to send in email.", PROJECT_NAME, 'sendEmailCancellation()');
+      CustomLogger.logInfo(
+        "No cancellations to send in email.",
+        PROJECT_NAME,
+        "sendEmailCancellation()"
+      );
       return;
     }
 
@@ -178,27 +263,39 @@ function sendEmailCancellation(forCancellation, collectionDate, emailTo, emailCc
         <th>&nbsp;</th>
         <th>Address</th>
       </tr>
-      ${forCancellation.map(store => `
+      ${forCancellation
+        .map(
+          (store) => `
         <tr>
           <td>${store.name}</td>
           <td>&nbsp;</td>  
           <td>${store.address}</td>
         </tr>
-      `).join('')}
+      `
+        )
+        .join("")}
       </table>
       <br><br>
       *** Please acknowledge this email. ****<br><br>${emailSignature}
     `;
 
-    GmailApp.sendEmail(emailTo, subject, '', {
+    GmailApp.sendEmail(emailTo, subject, "", {
       cc: emailCc,
       bcc: emailBcc,
       htmlBody: body,
-      from: "support@paybox.ph"
+      from: "support@paybox.ph",
     });
-    CustomLogger.logInfo(`Cancellation email sent for ${forCancellation.length} machines.`, PROJECT_NAME, 'sendEmailCancellation()');
+    CustomLogger.logInfo(
+      `Cancellation email sent for ${forCancellation.length} machines.`,
+      PROJECT_NAME,
+      "sendEmailCancellation()"
+    );
   } catch (error) {
-    CustomLogger.logError(`Error in sendEmailCancellation: ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'sendEmailCancellation()');
+    CustomLogger.logError(
+      `Error in sendEmailCancellation: ${error.message}\nStack: ${error.stack}`,
+      PROJECT_NAME,
+      "sendEmailCancellation()"
+    );
     throw error;
   }
 }
@@ -223,11 +320,19 @@ function replyToExistingThread(subject, messageBody) {
     // Reply to the thread
     thread.replyAll("", {
       htmlBody: messageBody,
-      from: "support@paybox.ph"
+      from: "support@paybox.ph",
     });
-    CustomLogger.logInfo(`Reply sent to the thread with subject: "${subject}"`, PROJECT_NAME, 'replyToExistingThread()');
+    CustomLogger.logInfo(
+      `Reply sent to the thread with subject: "${subject}"`,
+      PROJECT_NAME,
+      "replyToExistingThread()"
+    );
   } catch (error) {
-    CustomLogger.logError(`Error in replyToExistingThread: ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'replyToExistingThread()');
+    CustomLogger.logError(
+      `Error in replyToExistingThread: ${error.message}\nStack: ${error.stack}`,
+      PROJECT_NAME,
+      "replyToExistingThread()"
+    );
     throw error;
   }
 }
@@ -242,7 +347,11 @@ function replyToExistingThread(subject, messageBody) {
 function createHiddenWorksheetAndAddData(forCollections, srvBank) {
   try {
     if (!forCollections || forCollections.length === 0) {
-      CustomLogger.logInfo("No collection data to add to worksheet.", PROJECT_NAME, 'createHiddenWorksheetAndAddData()');
+      CustomLogger.logInfo(
+        "No collection data to add to worksheet.",
+        PROJECT_NAME,
+        "createHiddenWorksheetAndAddData()"
+      );
       return;
     }
 
@@ -276,10 +385,20 @@ function createHiddenWorksheetAndAddData(forCollections, srvBank) {
     // Adjust column width for better readability
     sheet.autoResizeColumns(1, 1);
 
-    CustomLogger.logInfo(`Updated for collection worksheet "${sheetName}" with ${numRows} rows.`, PROJECT_NAME, 'createHiddenWorksheetAndAddData()');
-    Logger.log(`Updated for collection worksheet "${sheetName}" with ${numRows} rows.`);
+    CustomLogger.logInfo(
+      `Updated for collection worksheet "${sheetName}" with ${numRows} rows.`,
+      PROJECT_NAME,
+      "createHiddenWorksheetAndAddData()"
+    );
+    Logger.log(
+      `Updated for collection worksheet "${sheetName}" with ${numRows} rows.`
+    );
   } catch (error) {
-    CustomLogger.logError(`Error in createHiddenWorksheetAndAddData(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'createHiddenWorksheetAndAddData()');
+    CustomLogger.logError(
+      `Error in createHiddenWorksheetAndAddData(): ${error.message}\nStack: ${error.stack}`,
+      PROJECT_NAME,
+      "createHiddenWorksheetAndAddData()"
+    );
     throw error;
   }
 }
@@ -296,15 +415,26 @@ function createHiddenWorksheetAndAddData(forCollections, srvBank) {
 function excludePastRequests(forCollections, tomorrowDateString) {
   try {
     if (!forCollections || forCollections.length === 0) {
-      CustomLogger.logInfo("No collections to filter.", PROJECT_NAME, 'excludePastRequests()');
+      CustomLogger.logInfo(
+        "No collections to filter.",
+        PROJECT_NAME,
+        "excludePastRequests()"
+      );
       return forCollections;
     }
 
     // using while forCollection and check forCollections[4] contains For Collection case incensitive
-    forCollections = forCollections.filter(item => {
-      if (item[4].toLowerCase().includes('for collection')) {
-        if (item[4].toLowerCase() !== 'for collection on ' + tomorrowDateString.toLowerCase()) {
-          CustomLogger.logInfo(`Excluded past request: ${item[0]} - ${item[4]}`, PROJECT_NAME, 'excludePastRequests()');
+    forCollections = forCollections.filter((item) => {
+      if (item[4].toLowerCase().includes("for collection")) {
+        if (
+          item[4].toLowerCase() !==
+          "for collection on " + tomorrowDateString.toLowerCase()
+        ) {
+          CustomLogger.logInfo(
+            `Excluded past request: ${item[0]} - ${item[4]}`,
+            PROJECT_NAME,
+            "excludePastRequests()"
+          );
           return false;
         }
       }
@@ -312,13 +442,22 @@ function excludePastRequests(forCollections, tomorrowDateString) {
     });
 
     //Sort by machine name
-    forCollections.sort((a, b) => a[0].toLowerCase().localeCompare(b[0].toLowerCase()));
+    forCollections.sort((a, b) =>
+      a[0].toLowerCase().localeCompare(b[0].toLowerCase())
+    );
 
-    CustomLogger.logInfo(`Done excluding past requested machines.`, PROJECT_NAME, 'excludePastRequests()');
+    CustomLogger.logInfo(
+      `Done excluding past requested machines.`,
+      PROJECT_NAME,
+      "excludePastRequests()"
+    );
     return forCollections;
-
   } catch (error) {
-    CustomLogger.logError(`Error in excludePastRequests(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'excludePastRequests()');
+    CustomLogger.logError(
+      `Error in excludePastRequests(): ${error.message}\nStack: ${error.stack}`,
+      PROJECT_NAME,
+      "excludePastRequests()"
+    );
     throw error;
   }
 }
@@ -334,7 +473,11 @@ function excludePastRequests(forCollections, tomorrowDateString) {
 function excludePreviouslyRequested(forCollections, srvBank) {
   try {
     if (!forCollections || forCollections.length === 0) {
-      CustomLogger.logInfo("No collections to filter.", PROJECT_NAME, 'excludePreviouslyRequested()');
+      CustomLogger.logInfo(
+        "No collections to filter.",
+        PROJECT_NAME,
+        "excludePreviouslyRequested()"
+      );
       return forCollections;
     }
 
@@ -344,14 +487,22 @@ function excludePreviouslyRequested(forCollections, srvBank) {
     const sheet = spreadsheet.getSheetByName(sheetName);
 
     if (!sheet) {
-      CustomLogger.logInfo(`Sheet "${sheetName}" not found. No previous collections to exclude.`, PROJECT_NAME, 'excludePreviouslyRequested()');
+      CustomLogger.logInfo(
+        `Sheet "${sheetName}" not found. No previous collections to exclude.`,
+        PROJECT_NAME,
+        "excludePreviouslyRequested()"
+      );
       return forCollections;
     }
 
     // Get previously requested machine names from Column A
     const previouslyRequested = getMachineNamesFromColumnA(sheet);
     if (!previouslyRequested || previouslyRequested.length === 0) {
-      CustomLogger.logInfo("No previously collected machines found.", PROJECT_NAME, 'excludePreviouslyRequested()');
+      CustomLogger.logInfo(
+        "No previously collected machines found.",
+        PROJECT_NAME,
+        "excludePreviouslyRequested()"
+      );
       return forCollections;
     }
 
@@ -359,20 +510,28 @@ function excludePreviouslyRequested(forCollections, srvBank) {
     const previouslyRequestedSet = new Set(previouslyRequested);
 
     // Filter out previously requested machines
-    const filteredCollections = forCollections.filter(collection => {
+    const filteredCollections = forCollections.filter((collection) => {
       const machineName = collection[0]; // Assuming machine names are in the first column
-      var returnVal = !previouslyRequestedSet.has(machineName)
+      var returnVal = !previouslyRequestedSet.has(machineName);
       return returnVal;
     });
 
     const removedCount = forCollections.length - filteredCollections.length;
     if (removedCount > 0) {
-      CustomLogger.logInfo(`Removed ${removedCount} previously collected machines from collection list.`, PROJECT_NAME, 'excludePreviouslyRequested()');
+      CustomLogger.logInfo(
+        `Removed ${removedCount} previously collected machines from collection list.`,
+        PROJECT_NAME,
+        "excludePreviouslyRequested()"
+      );
     }
 
     return filteredCollections;
   } catch (error) {
-    CustomLogger.logError(`Error in excludePreviouslyRequested(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'excludePreviouslyRequested()');
+    CustomLogger.logError(
+      `Error in excludePreviouslyRequested(): ${error.message}\nStack: ${error.stack}`,
+      PROJECT_NAME,
+      "excludePreviouslyRequested()"
+    );
     throw error;
   }
 }
@@ -384,8 +543,11 @@ function excludePreviouslyRequested(forCollections, srvBank) {
  * @param {Array} excludeExpiredForCollections - The array of items to exclude from forCollections.
  * @returns {Array} The filtered array with excluded items removed.
  */
-function removeExcludedCollections(forCollections, excludeExpiredForCollections) {
-  excludeExpiredForCollections.forEach(excludeItem => {
+function removeExcludedCollections(
+  forCollections,
+  excludeExpiredForCollections
+) {
+  excludeExpiredForCollections.forEach((excludeItem) => {
     let index;
     while ((index = forCollections.indexOf(excludeItem)) !== -1) {
       forCollections.splice(index, 1);
@@ -407,7 +569,11 @@ function removeExcludedCollections(forCollections, excludeExpiredForCollections)
 function excludeRecentlyCollected(forCollections, srvBank) {
   try {
     if (!forCollections || forCollections.length === 0) {
-      CustomLogger.logInfo("No collections to filter.", PROJECT_NAME, 'excludeRecentlyCollected()');
+      CustomLogger.logInfo(
+        "No collections to filter.",
+        PROJECT_NAME,
+        "excludeRecentlyCollected()"
+      );
       return forCollections;
     }
 
@@ -417,7 +583,11 @@ function excludeRecentlyCollected(forCollections, srvBank) {
     const sheet = spreadsheet.getSheetByName(sheetName);
 
     if (!sheet) {
-      CustomLogger.logInfo(`Sheet "${sheetName}" not found for reference of recently collected machines.`, PROJECT_NAME, 'excludeRecentlyCollected()');
+      CustomLogger.logInfo(
+        `Sheet "${sheetName}" not found for reference of recently collected machines.`,
+        PROJECT_NAME,
+        "excludeRecentlyCollected()"
+      );
       return forCollections;
     }
 
@@ -425,19 +595,29 @@ function excludeRecentlyCollected(forCollections, srvBank) {
     const lastRow = sheet.getLastRow();
     const data = sheet.getRange(2, 1, lastRow - 1, 6).getValues();
 
-    data.forEach(row => {
+    data.forEach((row) => {
       const machineName = row[0];
       const isRecentlyCollected = row[5]; // index 5 for column 6
 
       if (isRecentlyCollected) {
-        CustomLogger.logInfo(`Excluded recently collected machine: ${machineName}`, PROJECT_NAME, 'excludeRecentlyCollected()');
-        forCollections = forCollections.filter(collection => collection[0] !== machineName);
+        CustomLogger.logInfo(
+          `Excluded recently collected machine: ${machineName}`,
+          PROJECT_NAME,
+          "excludeRecentlyCollected()"
+        );
+        forCollections = forCollections.filter(
+          (collection) => collection[0] !== machineName
+        );
       }
     });
 
     return forCollections;
   } catch (error) {
-    CustomLogger.logError(`Error in excludeRecentlyCollected(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'excludeRecentlyCollected()');
+    CustomLogger.logError(
+      `Error in excludeRecentlyCollected(): ${error.message}\nStack: ${error.stack}`,
+      PROJECT_NAME,
+      "excludeRecentlyCollected()"
+    );
     throw error;
   }
 }
@@ -459,15 +639,16 @@ function getMachineNamesFromColumnA(sheet) {
     const values = range.getValues();
 
     // Flatten the array and filter out empty cells
-    return values.flat().filter(name => name);
+    return values.flat().filter((name) => name);
   } catch (error) {
-    CustomLogger.logError(`Error in getMachineNamesFromColumnA(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'getMachineNamesFromColumnA()');
+    CustomLogger.logError(
+      `Error in getMachineNamesFromColumnA(): ${error.message}\nStack: ${error.stack}`,
+      PROJECT_NAME,
+      "getMachineNamesFromColumnA()"
+    );
     throw error;
   }
 }
-
-
-
 
 // === Collection Logic Functions === //
 
@@ -483,41 +664,70 @@ function getMachineNamesFromColumnA(sheet) {
  * @param {string} srvBank - Service bank
  * @return {boolean} True if the machine should be included, false otherwise
  */
-function shouldIncludeForCollection(machineName, amountValue, translatedBusinessDays, tomorrowDate, tomorrowDateString, todayDate, lastRequest, srvBank) {
+function shouldIncludeForCollection(
+  machineName,
+  amountValue,
+  translatedBusinessDays,
+  tomorrowDate,
+  tomorrowDateString,
+  todayDate,
+  lastRequest,
+  srvBank
+) {
   try {
     const collectionDay = dayMapping[tomorrowDate.getDay()];
 
     // Exclude no collection day
     if (!translatedBusinessDays.includes(collectionDay)) {
-      CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, not a collection day.`, PROJECT_NAME, 'shouldIncludeForCollection');
+      CustomLogger.logInfo(
+        `Skipping collection for ${machineName} on ${tomorrowDateString}, not a collection day.`,
+        PROJECT_NAME,
+        "shouldIncludeForCollection"
+      );
       return false;
     }
 
+    if (machineName === "PLDT OLONGAPO") {
+      CustomLogger.logInfo(
+        `Stop here.`,
+        PROJECT_NAME,
+        "shouldIncludeForCollection"
+      );
+    }
+
     const scheduleBased = [
-      'PLDT ROBINSONS DUMAGUETE',
-      'SMART SM BACOLOD 1',
-      'SMART SM BACOLOD 2',
-      'SMART SM BACOLOD 3',
-      'PLDT ILIGAN',
-      'SMART GAISANO MALL OZAMIZ'
+      "PLDT ROBINSONS DUMAGUETE",
+      "SMART SM BACOLOD 1",
+      "SMART SM BACOLOD 2",
+      "SMART SM BACOLOD 3",
+      "PLDT ILIGAN",
+      "SMART GAISANO MALL OZAMIZ",
     ];
 
     // Skip these stores
     const excludedStores = [
-      'SMART LIMKETKAI CDO 2',
-      // 'SMART SM DAET',
-      // 'SMART SOLANO',
-      // 'SMART ROBINSONS BACOLOD 1'
+      "SMART LIMKETKAI CDO 2"
     ];
 
     if (excludedStores.includes(machineName)) {
-      CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, part of the excluded stores.`, PROJECT_NAME, 'shouldIncludeForCollection');
+      CustomLogger.logInfo(
+        `Skipping collection for ${machineName} on ${tomorrowDateString}, part of the excluded stores.`,
+        PROJECT_NAME,
+        "shouldIncludeForCollection"
+      );
       return false;
     }
 
     //For BPI Internal skip collection during weekends
-    if (srvBank === 'BPI Internal' && (collectionDay === 'Sat.' || collectionDay === 'Sun.')) {
-      CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString} as it is a weekend.`, PROJECT_NAME, 'shouldIncludeForCollection');
+    if (
+      srvBank === "BPI Internal" &&
+      (collectionDay === "Sat." || collectionDay === "Sun.")
+    ) {
+      CustomLogger.logInfo(
+        `Skipping collection for ${machineName} on ${tomorrowDateString} as it is a weekend.`,
+        PROJECT_NAME,
+        "shouldIncludeForCollection"
+      );
       return false;
     }
 
@@ -527,53 +737,68 @@ function shouldIncludeForCollection(machineName, amountValue, translatedBusiness
         `for replacement of cassette on ${tomorrowDateString.toLowerCase()}`,
         `for collection on ${tomorrowDateString.toLowerCase()}`,
         `resume collection on ${tomorrowDateString.toLowerCase()}`,
-        `for revisit on ${tomorrowDateString.toLowerCase()}`
+        `for revisit on ${tomorrowDateString.toLowerCase()}`,
       ];
 
-      if (specialConditions.some(condition => lastRequest.toLowerCase().includes(condition))) {
+      if (
+        specialConditions.some((condition) =>
+          lastRequest.toLowerCase().includes(condition)
+        )
+      ) {
         return true;
       }
     }
 
     // Store requested for M.W.Sat. via email
-    if (machineName === 'PLDT ROBINSONS DUMAGUETE' &&
-      (tomorrowDate.getDay() === dayIndex['M.'] ||
-        tomorrowDate.getDay() === dayIndex['W.'] ||
-        tomorrowDate.getDay() === dayIndex['Sat.'])) {
+    if (
+      machineName === "PLDT ROBINSONS DUMAGUETE" &&
+      (tomorrowDate.getDay() === dayIndex["M."] ||
+        tomorrowDate.getDay() === dayIndex["W."] ||
+        tomorrowDate.getDay() === dayIndex["Sat."])
+    ) {
       return true;
     }
 
     // Store requested for M.W.Sat. via email
-    if ((machineName === 'SMART SM BACOLOD 1' ||
-      machineName === 'SMART SM BACOLOD 2' ||
-      machineName === 'SMART SM BACOLOD 3') &&
-      (tomorrowDate.getDay() === dayIndex['T.'] ||
-        tomorrowDate.getDay() === dayIndex['Sat.'])) {
+    if (
+      (machineName === "SMART SM BACOLOD 1" ||
+        machineName === "SMART SM BACOLOD 2" ||
+        machineName === "SMART SM BACOLOD 3") &&
+      (tomorrowDate.getDay() === dayIndex["T."] ||
+        tomorrowDate.getDay() === dayIndex["Sat."])
+    ) {
       return true;
     }
 
-    if (machineName === 'PLDT ILIGAN' &&
-      (tomorrowDate.getDay() === dayIndex['M.'] ||
-        tomorrowDate.getDay() === dayIndex['W.'] ||
-        tomorrowDate.getDay() === dayIndex['F.'])) {
+    if (
+      machineName === "PLDT ILIGAN" &&
+      (tomorrowDate.getDay() === dayIndex["M."] ||
+        tomorrowDate.getDay() === dayIndex["W."] ||
+        tomorrowDate.getDay() === dayIndex["F."])
+    ) {
       return true;
     }
 
-    if (machineName === 'SMART GAISANO MALL OZAMIZ' &&
-      tomorrowDate.getDay() === dayIndex['F.']) {
+    if (
+      machineName === "SMART GAISANO MALL OZAMIZ" &&
+      tomorrowDate.getDay() === dayIndex["F."]
+    ) {
       return true;
     }
 
-    if (!scheduleBased.includes(machineName) &&
-      amountValue >= amountThresholds[collectionDay]) {
+    if (
+      !scheduleBased.includes(machineName) &&
+      amountValue >= amountThresholds[collectionDay]
+    ) {
       return true;
     }
 
     // Check payday ranges
-    const isPayday = paydayRanges.some(range =>
-      todayDate.getDate() >= range.start &&
-      todayDate.getDate() <= range.end &&
-      amountValue >= paydayAmount
+    const isPayday = paydayRanges.some(
+      (range) =>
+        todayDate.getDate() >= range.start &&
+        todayDate.getDate() <= range.end &&
+        amountValue >= paydayAmount
     );
 
     if (isPayday) {
@@ -581,18 +806,22 @@ function shouldIncludeForCollection(machineName, amountValue, translatedBusiness
     }
 
     // Check due date cutoffs
-    const isDueDate = dueDateCutoffs.some(range =>
-      todayDate.getDate() >= range.start &&
-      todayDate.getDate() <= range.end &&
-      amountValue >= dueDateCutoffsAmount
+    const isDueDate = dueDateCutoffs.some(
+      (range) =>
+        todayDate.getDate() >= range.start &&
+        todayDate.getDate() <= range.end &&
+        amountValue >= dueDateCutoffsAmount
     );
 
     if (isDueDate) {
       return true;
     }
-
   } catch (error) {
-    CustomLogger.logError(`Error in shouldIncludeForCollection(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'shouldIncludeForCollection()');
+    CustomLogger.logError(
+      `Error in shouldIncludeForCollection(): ${error.message}\nStack: ${error.stack}`,
+      PROJECT_NAME,
+      "shouldIncludeForCollection()"
+    );
     return false;
   }
 }
@@ -603,33 +832,47 @@ function shouldIncludeForCollection(machineName, amountValue, translatedBusiness
  * @param {string} todayDay - Today's day
  * @return {boolean} True if the machine should be excluded, false otherwise
  */
-function shouldExcludeFromCollection(lastRequest, todayDay, machineName = null) {
+function shouldExcludeFromCollection(
+  lastRequest,
+  todayDay,
+  machineName = null
+) {
   try {
     if (!lastRequest) {
       return false;
     }
 
     const exclusionReasons = [
-      'waiting for collection items',
-      'waiting for bank updates',
-      'did not reset',
-      'cassette removed',
-      'manually collected',
-      'for repair',
-      'already collected',
-      'store is closed',
-      'store is not using the machine',
-      todayDay
+      "waiting for collection items",
+      "waiting for bank updates",
+      "did not reset",
+      "cassette removed",
+      "manually collected",
+      "for repair",
+      "already collected",
+      "store is closed",
+      "store is not using the machine",
+      todayDay,
     ];
 
-    var excluded = exclusionReasons.some(reason => lastRequest.toLowerCase().includes(reason));
+    var excluded = exclusionReasons.some((reason) =>
+      lastRequest.toLowerCase().includes(reason)
+    );
     if (machineName !== null && excluded) {
-      CustomLogger.logInfo(`Machine Name: ${machineName} was excluded due to last request: ${lastRequest} `, PROJECT_NAME, 'shouldExcludeFromCollection()');
+      CustomLogger.logInfo(
+        `Machine Name: ${machineName} was excluded due to last request: ${lastRequest} `,
+        PROJECT_NAME,
+        "shouldExcludeFromCollection()"
+      );
     }
 
     return excluded;
   } catch (error) {
-    CustomLogger.logError(`Error in shouldExcludeFromCollection(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'shouldExcludeFromCollection()');
+    CustomLogger.logError(
+      `Error in shouldExcludeFromCollection(): ${error.message}\nStack: ${error.stack}`,
+      PROJECT_NAME,
+      "shouldExcludeFromCollection()"
+    );
     return false;
   }
 }
@@ -644,9 +887,13 @@ function isTomorrowHoliday(tomorrow) {
     const sheetName = "StoreName Mapping";
     const rangeStart = "G3";
     const rangeEnd = "I";
-    const validHolidayTypes = ["Regular Holiday", "Special Non-working Holiday"];
+    const validHolidayTypes = [
+      "Regular Holiday",
+      "Special Non-working Holiday",
+    ];
 
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+    const sheet =
+      SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
     if (!sheet) {
       throw new Error(`Sheet named "${sheetName}" not found.`);
     }
@@ -664,9 +911,20 @@ function isTomorrowHoliday(tomorrow) {
       const holidayDate = row[0];
       const holidayType = row[2];
 
-      if (holidayDate instanceof Date && holidayType && validHolidayTypes.includes(holidayType)) {
+      if (
+        holidayDate instanceof Date &&
+        holidayType &&
+        validHolidayTypes.includes(holidayType)
+      ) {
         if (holidayDate.getTime() === normalizedTomorrow.getTime()) {
-          CustomLogger.logInfo(`Tomorrow (${formatDate(tomorrow, "MMM d, yyyy")}) is a holiday: ${holidayType}`, PROJECT_NAME, 'isTomorrowHoliday()');
+          CustomLogger.logInfo(
+            `Tomorrow (${formatDate(
+              tomorrow,
+              "MMM d, yyyy"
+            )}) is a holiday: ${holidayType}`,
+            PROJECT_NAME,
+            "isTomorrowHoliday()"
+          );
           return true;
         }
       }
@@ -674,7 +932,11 @@ function isTomorrowHoliday(tomorrow) {
 
     return false;
   } catch (error) {
-    CustomLogger.logError(`Error in isTomorrowHoliday(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, 'isTomorrowHoliday()');
+    CustomLogger.logError(
+      `Error in isTomorrowHoliday(): ${error.message}\nStack: ${error.stack}`,
+      PROJECT_NAME,
+      "isTomorrowHoliday()"
+    );
     return false;
   }
 }
@@ -711,17 +973,17 @@ function getTomorrowDayCustomFormat(dateInput) {
 /**
  * Ensures that a string has only one space between words.
  * Removes leading and trailing spaces as well.
- * 
+ *
  * @param {string} inputString - The string to process.
  * @return {string} - The cleaned-up string.
  */
 function normalizeSpaces(inputString) {
-  if (typeof inputString !== 'string') {
-    throw new Error('Input must be a string');
+  if (typeof inputString !== "string") {
+    throw new Error("Input must be a string");
   }
 
   // Trim leading and trailing spaces and replace multiple spaces with a single space
-  return inputString.trim().replace(/\s+/g, ' ');
+  return inputString.trim().replace(/\s+/g, " ");
 }
 
 /**
@@ -729,14 +991,35 @@ function normalizeSpaces(inputString) {
  * The function will not execute if the current UTC date falls within the specified range.
  */
 function skipFunction() {
-  const startDateUTC = Date.UTC(2025, 4, 30, 0, 0, 0);   // May 30, 2025, 00:00:00 UTC (Months are 0-indexed)
-  const endDateUTC = Date.UTC(2025, 5, 27, 23, 59, 59);  // June 27, 2025, 23:59:59 UTC
+  const startDateUTC = Date.UTC(2025, 4, 30, 0, 0, 0); // May 30, 2025, 00:00:00 UTC (Months are 0-indexed)
+  const endDateUTC = Date.UTC(2025, 5, 27, 23, 59, 59); // June 27, 2025, 23:59:59 UTC
 
   const nowUTC = Date.now(); // Get current timestamp in milliseconds since epoch UTC
 
   // Check if the current UTC timestamp is within the predefined range.
   if (nowUTC >= startDateUTC && nowUTC <= endDateUTC) {
-    CustomLogger.logInfo('Function execution skipped due to date restriction.', PROJECT_NAME, 'skipFunction()');
+    CustomLogger.logInfo(
+      "Function execution skipped due to date restriction.",
+      PROJECT_NAME,
+      "skipFunction()"
+    );
     return; // Skip execution if within the restricted time range.
   }
+}
+
+/**
+ * Converts a 2D array into a structured JSON array.
+ * Expected structure per row: [location, amount, channel, request, remarks]
+ *
+ * @param {Array} data - A 2D array of data.
+ * @return {Array} - Array of JSON objects.
+ */
+function convertArrayToJson(data) {
+  return data.map((row) => ({
+    location: row[0] || "",
+    amount: row[1] || 0,
+    channel: row[2] || "",
+    request: row[3] || "",
+    remarks: row[4] || "",
+  }));
 }
