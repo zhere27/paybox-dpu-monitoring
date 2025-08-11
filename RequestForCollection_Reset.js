@@ -25,6 +25,5 @@ function resetCollectionRequests() {
       }
     }
   });
-  
-  ss.flush();
+
 }

@@ -14,7 +14,7 @@ function apeirosCollectionsLogic() {
   const ENV_EMAIL_RECIPIENTS = {
     production: {
       to: "mtcsantiago570@gmail.com, mtcsurigao@gmail.com, valdez.ezekiel23@gmail.com",
-      cc: "sherwinamerica@yahoo.com, egalcantara@multisyscorp.com, raflorentino@multisyscorp.com, cvcabanilla@multisyscorp.com, gmmrectin@multisyscorp.com",
+      cc: "sherwinamerica@yahoo.com, egalcantara@multisyscorp.com, raflorentino@multisyscorp.com, cvcabanilla@multisyscorp.com, gmmrectin@multisyscorp.com, amlaurio@multisyscorp.com ",
       bcc: "mvolbara@pldt.com.ph"
     },
     testing: {

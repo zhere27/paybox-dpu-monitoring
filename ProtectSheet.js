@@ -42,7 +42,7 @@ function hideSheets() {
   var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   var sheets = spreadsheet.getSheets();
 
-  for (var i = 9; i < sheets.length; i++) { // Index 3 corresponds to the fourth sheet
+  for (var i = 9; i < sheets.length; i++) { // Start hiding from the 10th sheet (index 9)
     sheets[i].hideSheet();
   }
   CustomLogger.logInfo("Hide sheets after Kiosk%",PROJECT_NAME, 'hideSheets()');

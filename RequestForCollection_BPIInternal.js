@@ -1,7 +1,7 @@
-function bpiCollectionsLogic() {
-  CustomLogger.logInfo("Running BPI Collections Logic...",PROJECT_NAME,'bpiCollectionsLogic()');
+function bpiInternalCollectionsLogic() {
+  CustomLogger.logInfo("Running BPI Internal Collections Logic...",PROJECT_NAME,'bpiInternalCollectionsLogic()');
   const environment = 'testing';
-  const srvBank = 'BPI';
+  const srvBank = 'BPI Internal';
   const { todayDate, tomorrowDate, todayDay, tomorrowDateString } = getTodayAndTomorrowDates();
 
   if (shouldSkipExecution(todayDate)) return;
@@ -40,7 +40,7 @@ function bpiCollectionsLogic() {
     const lastRequest = normalizeSpaces(lastRequests[i][0]);
     const businessDay = businessDays[i][0];
 
-    if ((collectionPartner !== 'BPI') || shouldExcludeFromCollection(lastRequest, todayDay)) return;
+    if ((collectionPartner !== 'BPI Internal') || shouldExcludeFromCollection(lastRequest, todayDay)) return;
 
     const translatedBusinessDays = translateDaysToAbbreviation(businessDay.trim());
 
@@ -53,7 +53,7 @@ function bpiCollectionsLogic() {
     createHiddenWorksheetAndAddData(forCollections, srvBank);
     processCollections(forCollections, tomorrowDate, emailRecipients.to, emailRecipients.cc, emailRecipients.bcc, srvBank);
   } else {
-    CustomLogger.logInfo('No eligible stores for collection tomorrow.',PROJECT_NAME,'bpiCollectionsLogic()');
+    CustomLogger.logInfo('No eligible stores for collection tomorrow.',PROJECT_NAME,'bpiInternalCollectionsLogic()');
   }
 
 }
