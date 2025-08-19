@@ -1,7 +1,7 @@
 function sendAdvancedNotice() {
   CustomLogger.logInfo("Running sending DPU advanced notice...", PROJECT_NAME, 'sendAdvancedNotice()');
   var srvBank = '';
-  const { todayDate, tomorrowDate, todayDay, tomorrowDateString } = getTodayAndTomorrowDates();
+  const { todayDate, tomorrowDate, todayDateString, tomorrowDateString } = getTodayAndTomorrowDates();
   const kioskData = getKioskPercentage();
   const [machineNames, percentValues, amountValues, collectionPartners, collectionSchedules, , lastRequests, businessDays] = kioskData;
   const formattedDate = Utilities.formatDate(tomorrowDate, Session.getScriptTimeZone(), "MMMM d, yyyy (EEEE)");
@@ -22,7 +22,7 @@ function sendAdvancedNotice() {
     const businessDay = businessDays[i][0];
     const translatedBusinessDays = translateDaysToAbbreviation(businessDay.trim());
 
-    if (shouldExcludeFromCollection(lastRequest, todayDay)) { return; }
+    if (forExclusionBasedOnRemarks(lastRequest, todayDateString, machineName)) { return; }
 
     const eligibleMachines = new Set(['SMART SM SAN PABLO', 'SMART SM LAS PINAS', 'SMART SM EAST ORTIGAS', 'SMART SM MUNTINLUPA']);
 

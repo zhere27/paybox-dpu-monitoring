@@ -1,8 +1,8 @@
 function resetCollectionRequests() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('Kiosk %');
-  const { todayDate, tomorrowDate, todayDay, tomorrowDateString } = getTodayAndTomorrowDates();
-  const kioskData = getKioskData();
+  const { todayDate, tomorrowDate, todayDateString, tomorrowDateString } = getTodayAndTomorrowDates();
+  const kioskData = getMachineDataByPartner();
   const [machineNames, percentValues, amountValues, collectionPartners, collectionSchedules, lastAddress, lastRequests, businessDays] = kioskData;
 
 

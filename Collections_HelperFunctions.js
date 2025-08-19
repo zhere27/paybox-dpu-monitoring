@@ -5,7 +5,7 @@
  * @return {Object} Object containing todayDate, tomorrowDate, todayDay, and tomorrowDateString
  * @property {Date} todayDate - Today's date as a Date object
  * @property {Date} tomorrowDate - Tomorrow's date as a Date object
- * @property {string} todayDay - Today's day in "MMM d" format
+ * @property {string} todayDateString - Today's day in "MMM d" format
  * @property {string} tomorrowDateString - Tomorrow's day in "MMM d" format
  */
 function getTodayAndTomorrowDates() {
@@ -18,7 +18,7 @@ function getTodayAndTomorrowDates() {
   return {
     todayDate,
     tomorrowDate,
-    todayDay: Utilities.formatDate(todayDate, timeZone, "MMM d"),
+    todayDateString: Utilities.formatDate(todayDate, timeZone, "MMM d"),
     tomorrowDateString: Utilities.formatDate(tomorrowDate, timeZone, "MMM d"),
   };
 }
@@ -69,22 +69,23 @@ function processCollections(forCollections, tomorrowDate, emailTo, emailCc, emai
 
     const collectionDate = new Date(tomorrowDate);
 
-    if (srvBank === "Brinks via BPI") {
-      // Sort by amount in descending order, handling NaN values by placing them at the end
-      forCollections.sort(function (a, b) {
-        const aAmount = parseFloat(a[2]);
-        const bAmount = parseFloat(b[2]);
-        if (isNaN(aAmount) && isNaN(bAmount)) return 0;
-        if (isNaN(aAmount)) return 1;
-        if (isNaN(bAmount)) return -1;
-        return bAmount - aAmount;
-      });
-    } else {
-      // sort forCollections by machineName
-      forCollections.sort(function (a, b) {
-        return a[0].localeCompare(b[0]);
-      });
-    }
+    // Helper: Sort by numeric value (desc), pushing NaN to the end
+    const sortByAmountDescNaNLast = (a, b, index) => {
+      const aAmount = Number(a[index]);
+      const bAmount = Number(b[index]);
+
+      if (Number.isNaN(aAmount) && Number.isNaN(bAmount)) return 0;
+      if (Number.isNaN(aAmount)) return 1;
+      if (Number.isNaN(bAmount)) return -1;
+
+      return bAmount - aAmount; // Descending
+    };
+
+    // Helper: Sort by string (case-sensitive) at given index
+    const sortByString = (a, b, index) => a[index].localeCompare(b[index]);
+
+    // Main logic
+    forCollections.sort(srvBank === "Brinks via BPI" ? (a, b) => sortByAmountDescNaNLast(a, b, 2) : (a, b) => sortByString(a, b, 0));
 
     // Saturday collection limit is only applicable to Brinks via BPI
     if (collectionDate.getDay() === 6 && srvBank === "Brinks via BPI") {
@@ -101,146 +102,6 @@ function processCollections(forCollections, tomorrowDate, emailTo, emailCc, emai
     }
   } catch (error) {
     CustomLogger.logError(`Error in processCollections(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, "processCollections()");
-    throw error;
-  }
-}
-
-// === Email Functions === //
-
-/**
- * Sends a collection email
- * @param {Array} machineData - Array of machine data
- * @param {Date} collectionDate - Collection date
- * @param {string} emailTo - Email recipients (to)
- * @param {string} emailCc - Email recipients (cc)
- * @param {string} emailBcc - Email recipients (bcc)
- * @param {string} srvBank - Service bank
- */
-function sendEmailCollection(machineData, collectionDate, emailTo, emailCc, emailBcc, srvBank) {
-  try {
-    if (!machineData || machineData.length === 0) {
-      CustomLogger.logInfo("No machine data to send in email.", PROJECT_NAME, "sendEmailCollection()");
-      return;
-    }
-
-    const formattedDate = formatDate(collectionDate, "MMMM d, yyyy (EEEE)");
-    const subject = `${srvBank} DPU Request - ${formattedDate}`;
-
-    let body;
-    if (machineData.some((item) => item[0] === "PLDT BANTAY" || item[0] === "SMART VIGAN")) {
-      body = `
-        Hi All,<br><br>
-        Good day! Please schedule <b>collection</b> on ${formattedDate} for the following stores:<br><br>
-        ${machineData.map((row) => row[0]).join("<br>")}<br><br>
-        For <b>PLDT BANTAY and SMART VIGAN</b>, kindly collect it on the same day.<br><br>
-        *** Please acknowledge this email. ****<br><br>${emailSignature}
-      `;
-    } else {
-      body = `
-        Hi All,<br><br>
-        Good day! Please schedule <b>collection</b> on ${formattedDate} for the following stores:<br><br>
-        ${machineData.map((row) => row[0]).join("<br>")}<br><br>
-        *** Please acknowledge this email. ****<br><br>${emailSignature}
-      `;
-    }
-
-    GmailApp.sendEmail(emailTo, subject, "", {
-      cc: emailCc,
-      bcc: emailBcc,
-      htmlBody: body,
-      from: "support@paybox.ph",
-    });
-    CustomLogger.logInfo(`Collection email sent for ${machineData.length} machines.`, PROJECT_NAME, "sendEmailCollection()");
-  } catch (error) {
-    CustomLogger.logError(`Error in sendEmailCollection: ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, "sendEmailCollection()");
-    throw error;
-  }
-}
-
-/**
- * Sends a cancellation email
- * @param {Array} forCancellation - Array of cancellations
- * @param {Date} collectionDate - Collection date
- * @param {string} emailTo - Email recipients (to)
- * @param {string} emailCc - Email recipients (cc)
- * @param {string} emailBcc - Email recipients (bcc)
- * @param {string} srvBank - Service bank
- * @param {boolean} isSaturday - Whether it's Saturday
- */
-function sendEmailCancellation(forCancellation, collectionDate, emailTo, emailCc, emailBcc, srvBank, isSaturday) {
-  try {
-    // Cancel sending email if no records in the forCancellation
-    if (!forCancellation || forCancellation.length === 0) {
-      CustomLogger.logInfo("No cancellations to send in email.", PROJECT_NAME, "sendEmailCancellation()");
-      return;
-    }
-
-    const formattedDate = formatDate(collectionDate, "EEEE, MMMM d, yyyy");
-    const subject = `Cancellation Pickup for PLDT x Smart Locations | ${formattedDate} | MULTISYS TECHNOLOGIES CORPORATION`;
-
-    const body = `
-      Hi Team,<br><br>
-      Good day! Please <b>cancel</b> the collection scheduled for ${formattedDate}, for the following stores:<br><br>
-      <table>
-      <tr>
-        <th>Store</th>
-        <th>&nbsp;</th>
-        <th>Address</th>
-      </tr>
-      ${forCancellation
-        .map(
-          (store) => `
-        <tr>
-          <td>${store.name}</td>
-          <td>&nbsp;</td>  
-          <td>${store.address}</td>
-        </tr>
-      `
-        )
-        .join("")}
-      </table>
-      <br><br>
-      *** Please acknowledge this email. ****<br><br>${emailSignature}
-    `;
-
-    GmailApp.sendEmail(emailTo, subject, "", {
-      cc: emailCc,
-      bcc: emailBcc,
-      htmlBody: body,
-      from: "support@paybox.ph",
-    });
-    CustomLogger.logInfo(`Cancellation email sent for ${forCancellation.length} machines.`, PROJECT_NAME, "sendEmailCancellation()");
-  } catch (error) {
-    CustomLogger.logError(`Error in sendEmailCancellation: ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, "sendEmailCancellation()");
-    throw error;
-  }
-}
-
-/**
- * Replies to an existing email thread
- * @param {string} subject - Email subject
- * @param {string} messageBody - Message body
- */
-function replyToExistingThread(subject, messageBody) {
-  try {
-    // Search for the thread by its subject
-    const threads = GmailApp.search(`subject:"${subject}"`);
-
-    if (threads.length === 0) {
-      throw new Error(`No thread found with the subject: "${subject}"`);
-    }
-
-    // Get the first matching thread
-    const thread = threads[0];
-
-    // Reply to the thread
-    thread.replyAll("", {
-      htmlBody: messageBody,
-      from: "support@paybox.ph",
-    });
-    CustomLogger.logInfo(`Reply sent to the thread with subject: "${subject}"`, PROJECT_NAME, "replyToExistingThread()");
-  } catch (error) {
-    CustomLogger.logError(`Error in replyToExistingThread: ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, "replyToExistingThread()");
     throw error;
   }
 }
@@ -487,95 +348,62 @@ function getMachineNamesFromColumnA(sheet) {
  * @param {Date} tomorrowDate - Tomorrow's date
  * @param {string} tomorrowDateString - Tomorrow's date string
  * @param {Date} todayDate - Today's date
- * @param {string} lastRequest - Last request
+ * @param {string} lastRemark - Last request
  * @param {string} srvBank - Service bank
  * @return {boolean} True if the machine should be included, false otherwise
  */
-function shouldIncludeForCollection(machineName, amountValue, translatedBusinessDays, tomorrowDate, tomorrowDateString, todayDate, lastRequest, srvBank) {
+function shouldIncludeForCollection(machineName, amountValue, translatedBusinessDays, tomorrowDate, tomorrowDateString, todayDate, lastRemark, srvBank) {
   try {
     const collectionDay = dayMapping[tomorrowDate.getDay()];
+    const dayOfWeek = tomorrowDate.getDay();
 
-    // Exclude no collection day
+    // 1. Check if excluded store
+    if (isExcludedStore(machineName)) {
+      CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, part of the excluded stores.`, PROJECT_NAME, "shouldIncludeForCollection");
+      return false;
+    }
+
+    // 2. Check business days
     if (!translatedBusinessDays.includes(collectionDay)) {
       CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, not a collection day.`, PROJECT_NAME, "shouldIncludeForCollection");
       return false;
     }
 
-    if (machineName === "PLDT OLONGAPO") {
-      CustomLogger.logInfo(`Stop here.`, PROJECT_NAME, "shouldIncludeForCollection");
-    }
-
-    const scheduleBased = ["PLDT ROBINSONS DUMAGUETE", "SMART SM BACOLOD 1", "SMART SM BACOLOD 2", "SMART SM BACOLOD 3", "PLDT ILIGAN", "SMART GAISANO MALL OZAMIZ"];
-
-    // Skip these stores
-    const excludedStores = ["SMART LIMKETKAI CDO 2"];
-
-    if (excludedStores.includes(machineName)) {
-      CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, part of the excluded stores.`, PROJECT_NAME, "shouldIncludeForCollection");
+    // 3. Check weekend restrictions
+    if (shouldSkipWeekendCollections(srvBank, tomorrowDate)) {
+      CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, during weekends.`, PROJECT_NAME, "shouldIncludeForCollection");
       return false;
     }
 
-    //For BPI Internal skip collection during weekends
-    if (srvBank === "BPI Internal" && (collectionDay === "Sat." || collectionDay === "Sun.")) {
-      CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString} as it is a weekend.`, PROJECT_NAME, "shouldIncludeForCollection");
-      return false;
-    }
+    // Early returns for inclusion conditions (highest priority)
 
-    // Check for special collection conditions in lastRequest
-    if (lastRequest) {
-      const specialConditions = [
-        `for replacement of cassette on ${tomorrowDateString.toLowerCase()}`,
-        `for collection on ${tomorrowDateString.toLowerCase()}`,
-        `resume collection on ${tomorrowDateString.toLowerCase()}`,
-        `for revisit on ${tomorrowDateString.toLowerCase()}`,
-      ];
-
-      if (specialConditions.some((condition) => lastRequest.toLowerCase().includes(condition))) {
-        return true;
-      }
-    }
-
-    // Store requested for M.W.Sat. via email
-    if (
-      machineName === "PLDT ROBINSONS DUMAGUETE" &&
-      (tomorrowDate.getDay() === dayIndex["M."] || tomorrowDate.getDay() === dayIndex["W."] || tomorrowDate.getDay() === dayIndex["Sat."])
-    ) {
+    // 1. Special collection conditions from last remarks
+    if (hasSpecialCollectionConditions(lastRemark, tomorrowDateString)) {
       return true;
     }
 
-    // Store requested for M.W.Sat. via email
-    if (
-      (machineName === "SMART SM BACOLOD 1" || machineName === "SMART SM BACOLOD 2" || machineName === "SMART SM BACOLOD 3") &&
-      (tomorrowDate.getDay() === dayIndex["T."] || tomorrowDate.getDay() === dayIndex["Sat."])
-    ) {
+    // 2. Schedule-based store collections
+    if (SCHEDULE_CONFIG.stores.includes(machineName)) {
+      return shouldCollectScheduleBasedStore(machineName, dayOfWeek);
+    }
+
+    // 3. Regular threshold-based collection
+    if (meetsAmountThreshold(amountValue, collectionDay)) {
       return true;
     }
 
-    if (machineName === "PLDT ILIGAN" && (tomorrowDate.getDay() === dayIndex["M."] || tomorrowDate.getDay() === dayIndex["W."] || tomorrowDate.getDay() === dayIndex["F."])) {
+    // 4. Payday collection
+    if (isPaydayCollection(todayDate, amountValue)) {
       return true;
     }
 
-    if (machineName === "SMART GAISANO MALL OZAMIZ" && tomorrowDate.getDay() === dayIndex["F."]) {
+    // 5. Due date collection
+    if (isDueDateCollection(todayDate, amountValue)) {
       return true;
     }
 
-    if (!scheduleBased.includes(machineName) && amountValue >= amountThresholds[collectionDay]) {
-      return true;
-    }
-
-    // Check payday ranges
-    const isPayday = paydayRanges.some((range) => todayDate.getDate() >= range.start && todayDate.getDate() <= range.end && amountValue >= paydayAmount);
-
-    if (isPayday) {
-      return true;
-    }
-
-    // Check due date cutoffs
-    const isDueDate = dueDateCutoffs.some((range) => todayDate.getDate() >= range.start && todayDate.getDate() <= range.end && amountValue >= dueDateCutoffsAmount);
-
-    if (isDueDate) {
-      return true;
-    }
+    // Default: no collection needed
+    return false;
   } catch (error) {
     CustomLogger.logError(`Error in shouldIncludeForCollection(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, "shouldIncludeForCollection()");
     return false;
@@ -588,12 +416,18 @@ function shouldIncludeForCollection(machineName, amountValue, translatedBusiness
  * @param {string} todayDay - Today's day
  * @return {boolean} True if the machine should be excluded, false otherwise
  */
-function shouldExcludeFromCollection(lastRequest, todayDay, machineName = null) {
+function forExclusionBasedOnRemarks(lastRequest, todayDay, machineName = null) {
   try {
-    if (!lastRequest) {
+    // Early return for null/undefined/empty lastRequest
+    if (!lastRequest?.trim()) {
       return false;
     }
 
+    // Normalize inputs once
+    const normalizedLastRequest = lastRequest.toLowerCase().trim();
+    const normalizedTodayDay = todayDay?.toLowerCase().trim() || "";
+
+    // Define exclusion criteria with better organization
     const exclusionReasons = [
       "waiting for collection items",
       "waiting for bank updates",
@@ -604,18 +438,22 @@ function shouldExcludeFromCollection(lastRequest, todayDay, machineName = null) 
       "already collected",
       "store is closed",
       "store is not using the machine",
-      todayDay,
-    ];
+      "for relocation",
+      normalizedTodayDay,
+    ].filter((reason) => reason); // Remove empty strings
 
-    var excluded = exclusionReasons.some((reason) => lastRequest.toLowerCase().includes(reason));
-    if (machineName !== null && excluded) {
-      CustomLogger.logInfo(`Machine Name: ${machineName} was excluded due to last request: ${lastRequest} `, PROJECT_NAME, "shouldExcludeFromCollection()");
+    // Check for exclusion with optimized search
+    const isExcluded = exclusionReasons.some((reason) => normalizedLastRequest.includes(reason));
+
+    // Log exclusion if machine name provided and excluded
+    if (isExcluded && machineName) {
+      CustomLogger.logInfo(`Machine "${machineName}" excluded - Last remarks: "${lastRequest}"`, PROJECT_NAME, "forExclusionBasedOnRemarks");
     }
 
-    return excluded;
+    return isExcluded;
   } catch (error) {
-    CustomLogger.logError(`Error in shouldExcludeFromCollection(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, "shouldExcludeFromCollection()");
-    return false;
+    CustomLogger.logError(`Error in shouldExcludeFromCollection(): ${error.message}`, PROJECT_NAME, "forExclusionBasedOnRemarks");
+    return false; // Fail-safe: don't exclude on error
   }
 }
 
@@ -741,4 +579,133 @@ function convertArrayToJson(data) {
     request: row[3] || "",
     remarks: row[4] || "",
   }));
+}
+/**
+ * Helper Functions for Collection Logic
+ */
+
+/**
+ * Checks if a machine should be excluded from collection
+ * @param {string} machineName - The name of the machine
+ * @returns {boolean} - True if machine should be excluded
+ */
+function isExcludedStore(machineName) {
+  const excludedStores = [
+    "SMART LIMKETKAI CDO 2"
+  ];
+  return excludedStores.includes(machineName);
+}
+
+/**
+ * Checks if collection should be skipped for BPI banks on weekends
+ * @param {string} srvBank - The bank service name
+ * @param {Date} date - The date to check
+ * @returns {boolean} - True if should skip weekend collection
+ */
+function shouldSkipWeekendCollections(srvBank, date) {
+  const dpuPartners = ["BPI", "BPI Internal", "Apeiros"];
+  const weekendDays = [dayIndex["Sat."], dayIndex["Sun."]];
+
+  return dpuPartners.includes(srvBank) && weekendDays.includes(date.getDay());
+}
+
+/**
+ * Checks if the last request contains special collection conditions
+ * @param {string} lastRequest - The last request string
+ * @param {string} dateString - The formatted date string
+ * @returns {boolean} - True if special conditions are met
+ */
+function hasSpecialCollectionConditions(lastRequest, dateString) {
+  if (!lastRequest) return false;
+
+  const lowerDateString = dateString.toLowerCase();
+  const specialConditions = [
+    `for replacement of cassette on ${lowerDateString}`,
+    `for collection on ${lowerDateString}`,
+    `resume collection on ${lowerDateString}`,
+    `for revisit on ${lowerDateString}`,
+  ];
+
+  return specialConditions.some((condition) => lastRequest.toLowerCase().includes(condition));
+}
+
+/**
+ * Configuration object for schedule-based stores
+ */
+const SCHEDULE_CONFIG = {
+  stores: ["PLDT ROBINSONS DUMAGUETE", "SMART SM BACOLOD 1", "SMART SM BACOLOD 2", "SMART SM BACOLOD 3", "PLDT ILIGAN", "SMART GAISANO MALL OZAMIZ"],
+  schedules: {
+    "PLDT ROBINSONS DUMAGUETE": [dayIndex["M."], dayIndex["W."], dayIndex["Sat."]],
+    "SMART SM BACOLOD 1": [dayIndex["T."], dayIndex["Sat."]],
+    "SMART SM BACOLOD 2": [dayIndex["T."], dayIndex["Sat."]],
+    "SMART SM BACOLOD 3": [dayIndex["T."], dayIndex["Sat."]],
+    "PLDT ILIGAN": [dayIndex["M."], dayIndex["W."], dayIndex["F."]],
+    "SMART GAISANO MALL OZAMIZ": [dayIndex["F."]],
+  },
+};
+
+/**
+ * Checks if a schedule-based store should be collected on the given day
+ * @param {string} machineName - The name of the machine
+ * @param {number} dayOfWeek - The day of week (0-6)
+ * @returns {boolean} - True if collection should occur
+ */
+function shouldCollectScheduleBasedStore(machineName, dayOfWeek) {
+  const schedule = SCHEDULE_CONFIG.schedules[machineName];
+  return schedule ? schedule.includes(dayOfWeek) : false;
+}
+
+/**
+ * Checks if the amount meets threshold requirements for regular collection
+ * @param {number} amountValue - The amount to check
+ * @param {string} collectionDay - The collection day
+ * @returns {boolean} - True if threshold is met
+ */
+function meetsAmountThreshold(amountValue, collectionDay) {
+  return amountValue >= amountThresholds[collectionDay];
+}
+
+/**
+ * Checks if current date falls within payday ranges and meets amount requirement
+ * @param {Date} todayDate - Today's date
+ * @param {number} amountValue - The amount to check
+ * @returns {boolean} - True if payday conditions are met
+ */
+function isPaydayCollection(todayDate, amountValue) {
+  const currentDate = todayDate.getDate();
+  return paydayRanges.some((range) => currentDate >= range.start && currentDate <= range.end && amountValue >= paydayAmount);
+}
+
+/**
+ * Checks if current date falls within due date cutoffs and meets amount requirement
+ * @param {Date} todayDate - Today's date
+ * @param {number} amountValue - The amount to check
+ * @returns {boolean} - True if due date conditions are met
+ */
+function isDueDateCollection(todayDate, amountValue) {
+  const currentDate = todayDate.getDate();
+  return dueDateCutoffs.some((range) => currentDate >= range.start && currentDate <= range.end && amountValue >= dueDateCutoffsAmount);
+}
+
+/**
+ * Helper function to create standardized exclusion reasons
+ * Useful if exclusion logic becomes more complex or needs to be shared
+ * @param {string} todayDay - Current day name
+ * @return {string[]} Array of exclusion reason strings
+ */
+function getExclusionReasons(todayDay) {
+  const baseReasons = [
+    "waiting for collection items",
+    "waiting for bank updates",
+    "did not reset",
+    "cassette removed",
+    "manually collected",
+    "for repair",
+    "already collected",
+    "store is closed",
+    "store is not using the machine",
+    "for relocation",
+  ];
+
+  return todayDay ? [...baseReasons, todayDay.toLowerCase().trim()] : baseReasons;
 }

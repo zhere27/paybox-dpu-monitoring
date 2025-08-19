@@ -23,11 +23,11 @@ function createTimeDrivenTriggers() {
 
   ScriptApp.newTrigger("exportSheetAndSendEmail").timeBased().everyDays(1).atHour(18).create();
 
-  ScriptApp.newTrigger("bpiBrinkCollectionsLogic").timeBased().everyDays(1).atHour(15).nearMinute(20).create();
+  ScriptApp.newTrigger("bpiBrinkCollectionsLogic").timeBased().everyDays(1).atHour(15).nearMinute(30).create();
 
-  ScriptApp.newTrigger("bpiCollectionsLogic").timeBased().everyDays(1).atHour(15).nearMinute(20).create();
+  ScriptApp.newTrigger("bpiCollectionsLogic").timeBased().everyDays(1).atHour(15).nearMinute(30).create();
 
-  ScriptApp.newTrigger("bpiInternalCollectionsLogic").timeBased().everyDays(1).atHour(15).nearMinute(20).create();
+  ScriptApp.newTrigger("bpiInternalCollectionsLogic").timeBased().everyDays(1).atHour(15).nearMinute(30).create();
 
   ScriptApp.newTrigger("eTapCollectionsLogic").timeBased().everyDays(1).atHour(15).nearMinute(30).create();
 

@@ -1,25 +1,28 @@
 function bpiCollectionsLogic() {
-  CustomLogger.logInfo("Running BPI Collections Logic...",PROJECT_NAME,'bpiCollectionsLogic()');
-  const environment = 'testing';
+  CustomLogger.logInfo("Running BPI Collections Logic...", PROJECT_NAME, 'bpiCollectionsLogic()');
+  const environment = 'production';
   const srvBank = 'BPI';
-  const { todayDate, tomorrowDate, todayDay, tomorrowDateString } = getTodayAndTomorrowDates();
+  const { todayDate, tomorrowDate, todayDateString, tomorrowDateString } = getTodayAndTomorrowDates();
 
-  if (shouldSkipExecution(todayDate)) return;
+  // Skip weekends
+  if (shouldSkipWeekendCollections(srvBank, tomorrowDate)) {
+    CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, during weekends.`, PROJECT_NAME, "bpiCollectionsLogic");
+    return false;
+  }
 
+  // Move collection schedule if tomorrow is holiday
   if (isTomorrowHoliday(tomorrowDate)) {
     tomorrowDate.setDate(tomorrowDate.getDate() + 1);
   }
 
-  const kioskData = getKioskData(srvBank);
-  const [machineNames, percentValues, amountValues, collectionPartners, collectionSchedules, , lastRequests, businessDays] = kioskData;
-  const formattedDate = Utilities.formatDate(tomorrowDate, Session.getScriptTimeZone(), "MMMM d, yyyy (EEEE)");
-  const subject = `${srvBank} DPU Request - ${formattedDate}`
+  const machineData = getMachineDataByPartner(srvBank);
+  const [machineNames, percentValues, amountValues, collectionPartners, collectionSchedules, , lastRemarks, businessDays] = machineData;
 
   const ENV_EMAIL_RECIPIENTS = {
     production: {
       to: "mjdagasuhan@bpi.com.ph",
       cc: "malodriga@bpi.com.ph, julsales@bpi.com.ph, jcslingan@bpi.com.ph, eagmarayag@bpi.com.ph, jmdcantorna@bpi.com.ph, egcameros@bpi.com.ph, jdduque@bpi.com.ph, rdtayag@bpi.com.ph, rsmendoza1@bpi.com.ph, vjdtorcuator@bpi.com.ph, egalcantara@multisyscorp.com, raflorentino@multisyscorp.com, cvcabanilla@multisyscorp.com, gmmrectin@multisyscorp.com, amlaurio@multisyscorp.com ",
-      bcc: "mvolbara@pldt.com.ph"
+      bcc: "mvolbara@pldt.com.ph,RBEspayos@smart.com.ph "
     },
     testing: {
       to: "Erwin Alcantara <egalcantara@multisyscorp.com>",
@@ -36,24 +39,26 @@ function bpiCollectionsLogic() {
   machineNames.forEach((machineNameArr, i) => {
     const machineName = machineNameArr[0];
     const amountValue = amountValues[i][0];
-    const collectionPartner = collectionPartners[i][0];
-    const lastRequest = normalizeSpaces(lastRequests[i][0]);
+    const lastRemark = normalizeSpaces(lastRemarks[i][0]);
     const businessDay = businessDays[i][0];
 
-    if ((collectionPartner !== 'BPI') || shouldExcludeFromCollection(lastRequest, todayDay)) return;
+    // Skip if the last request should be excluded
+    if (forExclusionBasedOnRemarks(lastRemark, todayDateString, machineName)) {
+      return;
+    }
 
     const translatedBusinessDays = translateDaysToAbbreviation(businessDay.trim());
 
-    if (shouldIncludeForCollection(machineName, amountValue, translatedBusinessDays, tomorrowDate, tomorrowDateString, todayDate, lastRequest, srvBank)) {
+    if (shouldIncludeForCollection(machineName, amountValue, translatedBusinessDays, tomorrowDate, tomorrowDateString, todayDate, lastRemark, srvBank)) {
       forCollections.push([machineName, amountValue, srvBank, subject]);
     }
   });
 
-  if (forCollections.length > 0) {
+  if (environment === "production" && forCollections.length > 0) {
     createHiddenWorksheetAndAddData(forCollections, srvBank);
     processCollections(forCollections, tomorrowDate, emailRecipients.to, emailRecipients.cc, emailRecipients.bcc, srvBank);
   } else {
-    CustomLogger.logInfo('No eligible stores for collection tomorrow.',PROJECT_NAME,'bpiCollectionsLogic()');
+    CustomLogger.logInfo('No eligible stores for collection tomorrow.', PROJECT_NAME, 'bpiCollectionsLogic()');
   }
 
 }

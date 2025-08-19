@@ -320,7 +320,7 @@ function getKioskPercentage() {
   ];
 }
 
-function getKioskData(srvBank = null) {
+function getMachineDataByPartner(srvBank = null) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = spreadsheet.getSheetByName("Kiosk %");
 
@@ -329,7 +329,7 @@ function getKioskData(srvBank = null) {
   const partnerAddress = sheet.getRange(2, 2, lastRow - 1).getValues(); // Column B
   const percentValues = sheet.getRange(2, 16, lastRow - 1).getValues(); // Column P
   const amountValues = sheet.getRange(2, 17, lastRow - 1).getValues(); // Column Q
-  const lastRequests = sheet.getRange(2, 18, lastRow - 1).getValues(); // Column R
+  const lastRemarks = sheet.getRange(2, 18, lastRow - 1).getValues(); // Column R
   const collectionSchedules = sheet.getRange(2, 23, lastRow - 1).getValues(); // Column W
   const collectionPartners = sheet.getRange(2, 24, lastRow - 1).getValues(); // Column X
   const businessDays = sheet.getRange(2, 25, lastRow - 1).getValues(); // Column Y
@@ -354,7 +354,7 @@ function getKioskData(srvBank = null) {
     (i) => collectionSchedules[i]
   );
   const filteredPartnerAddress = filteredData.map((i) => partnerAddress[i]);
-  const filteredLastRequests = filteredData.map((i) => lastRequests[i]);
+  const filteredLastRemarks = filteredData.map((i) => lastRemarks[i]);
   const filteredBusinessDays = filteredData.map((i) => businessDays[i]);
 
   return [
@@ -364,7 +364,7 @@ function getKioskData(srvBank = null) {
     filteredCollectionPartners,
     filteredCollectionSchedules,
     filteredPartnerAddress,
-    filteredLastRequests,
+    filteredLastRemarks,
     filteredBusinessDays,
   ];
 }

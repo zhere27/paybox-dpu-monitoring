@@ -2,14 +2,12 @@ function apeirosCollectionsLogic() {
   CustomLogger.logInfo("Running Apeiros Collection Logic...",PROJECT_NAME,'eTapCollectionsLogic()');
   const environment = 'testing';
   const srvBank = 'Apeiros';
-  const { todayDate, tomorrowDate, todayDay, tomorrowDateString } = getTodayAndTomorrowDates();
+  const { todayDate, tomorrowDate, todayDateString, tomorrowDateString } = getTodayAndTomorrowDates();
+  const tomorrowDateFormatted = Utilities.formatDate(tomorrowDate, Session.getScriptTimeZone(), "MMMM d, yyyy (EEEE)");
+  const subject = `${srvBank} DPU Request - ${tomorrowDateFormatted}`
 
-  if (shouldSkipExecution(todayDate)) return;
-
-  const kioskData = getKioskData(srvBank);
-  const [machineNames, percentValues, amountValues, collectionPartners, collectionSchedules, , lastRequests, businessDays] = kioskData;
-  const formattedDate = Utilities.formatDate(tomorrowDate, Session.getScriptTimeZone(), "MMMM d, yyyy (EEEE)");
-  const subject = `${srvBank} DPU Request - ${formattedDate}`
+  const machineData = getMachineDataByPartner(srvBank);
+  const [machineNames, percentValues, amountValues, collectionPartners, collectionSchedules, , lastRemarks, businessDays] = machineData;
 
   const ENV_EMAIL_RECIPIENTS = {
     production: {
@@ -32,15 +30,17 @@ function apeirosCollectionsLogic() {
   machineNames.forEach((machineNameArr, i) => {
     const machineName = machineNameArr[0];
     const amountValue = amountValues[i][0];
-    const collectionPartner = collectionPartners[i][0];
-    const lastRequest = normalizeSpaces(lastRequests[i][0]);
+    const lastRemark = normalizeSpaces(lastRemarks[i][0]);
     const businessDay = businessDays[i][0];
 
-    if (collectionPartner !== 'Apeiros' || shouldExcludeFromCollection(lastRequest, todayDay)) return;
+    // Skip if the last request should be excluded
+    if (forExclusionBasedOnRemarks(lastRemark, todayDateString, machineName)) {
+      return;
+    }
 
     const translatedBusinessDays = translateDaysToAbbreviation(businessDay.trim());
 
-    if (shouldIncludeForCollection(machineName, amountValue, translatedBusinessDays, tomorrowDate, tomorrowDateString, todayDate, lastRequest, srvBank)) {
+    if (shouldIncludeForCollection(machineName, amountValue, translatedBusinessDays, tomorrowDate, tomorrowDateString, todayDate, lastRemark, srvBank)) {
       forCollections.push([machineName, amountValue, srvBank, subject]);
     }
   });

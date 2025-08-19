@@ -39,6 +39,7 @@ function refresh(file) {
 
   const storesSheet = `${storeSheetUrl}`;
   const formulaSparkline = `=SPARKLINE(INDIRECT("C"&ROW()&":P"&ROW()))`;
+  const formulaMachineStatus =`=VLOOKUP(INDIRECT("A"&ROW()),INDIRECT(CONCATENATE("'",TEXT($P$1,"MM"),TEXT($P$1,"DD")," ",TEXT($P$1,"HH"),"00",TEXT($P$1,"YY"),"'!A:D")),3,false)`;
   const formulaNoMovement = '=IF(INDIRECT("C"&ROW())<>"",IF(COUNTIF(INDIRECT("C"&ROW()&":P"&ROW()),"<>"& INDIRECT("C"&ROW()))=0, "No changes", ""),"")';
   const formulaCollectedStores = "=IFNA(VLOOKUP(A2,'Collected Yesterday'!B:B,1,false))";
   const formulaFrequency = `=VLOOKUP(A2,IMPORTRANGE("${storesSheet}","Stores!C:X"),7,FALSE)`;
@@ -48,6 +49,8 @@ function refresh(file) {
   sheet.getRange(`Q2:Q${lastRow}`).clear();
   SpreadsheetApp.flush();
   CustomLogger.logInfo(`Cleared column Q (Current Cash Amount)`, PROJECT_NAME, "refresh()");
+
+  const formulaMachineStatusRange = sheet.getRange(`S2:S${lastRow}`).clear().setFontFamily("Century Gothic").setFontSize(9).setFormula(formulaMachineStatus);
 
   const formulaSparklineRange = sheet.getRange(`T2:T${lastRow}`).clear().setFontFamily("Century Gothic").setFontSize(9).setFormula(formulaSparkline);
 
@@ -66,7 +69,7 @@ function refresh(file) {
   sheet.getRange("P1").setValue(formattedDate).setNumberFormat("MM/dd HH:00AM/PM").setBackground("#d9d9d9");
   sheet.getRange("Q1").setValue("Current Cash Amount").setBackground("#d9d9d9");
   sheet.getRange("R1").setValue("Remarks").setBackground("#d9d9d9");
-  sheet.getRange("S1").setValue("Last Requested for Collection").setBackground("#d9d9d9");
+  sheet.getRange("S1").setValue("Machine Status as of last update").setBackground("#d9d9d9");
   sheet.getRange("T1").setValue("Movements").setBackground("#d9d9d9"); //sparkline
   sheet.getRange("U1").setValue("No Movement for 5 days").setBackground("#d9d9d9");
   sheet.getRange("V1").setValue("Collected Stores").setBackground("#d9d9d9");
@@ -78,7 +81,7 @@ function refresh(file) {
   //Set Percentage and Current Amount Formula
   const formulaPercentage = `=IFNA(TEXT(QUERY('${sheetName}'!$A:$D,"select D where A='" & TRIM(A2) & "'",0),"0.00%")/100,0)`;
   const formulaCurrentAmount = `=IFNA(QUERY('${sheetName}'!$A:$D,"select B where A='" & TRIM(A2) & "'",0),0)`;
-
+  
   // Set formulas with formatting
   const formulaRange = sheet
     .getRange(`P2:P${lastRow}`)
@@ -210,6 +213,7 @@ function applyConditionalFormatting() {
   // Define ranges
   const range = sheet.getRange(`C2:P${lastRow}`); // Adjust the range as needed
   const rangeNoMovement = sheet.getRange(`U2:U${lastRow}`); // Adjust the range as needed
+  const rangeMachineStatus = sheet.getRange(`S2:S${lastRow}`);
   const rangeCollected = sheet.getRange(`A2:A${lastRow}`);
   const rangeRCBC = sheet.getRange(`Q2:Q${lastRow}`);
 
@@ -236,17 +240,16 @@ function applyConditionalFormatting() {
     //   .build()
   ];
 
-  // Define conditional formatting rules for the no movement range
-  const rulesNoMovement = [
-    SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo("No changes").setBackground("#cc0000").setFontColor("white").setRanges([rangeNoMovement]).build(),
-  ];
+  const rulesMachineStatus = [SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo("OFFLINE").setBackground("white").setFontColor('red').setRanges([rangeMachineStatus]).build()];
+ 
+  const rulesNoMovement = [SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo("No changes").setBackground("#cc0000").setFontColor("white").setRanges([rangeNoMovement]).build()];
 
   const rulesCollected = [SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied("=A2=V2").setBackground("#ff9900").setRanges([rangeCollected]).build()];
 
   const rulesRCBC = [SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=AND(X1="RCBC", Q1>180000)').setBackground("#ff9900").setRanges([rangeRCBC]).build()];
 
   // Combine all rules
-  const allRules = rules.concat(rulesNoMovement).concat(rulesCollected).concat(rulesRCBC);
+  const allRules = rules.concat(rulesMachineStatus).concat(rulesNoMovement).concat(rulesCollected).concat(rulesRCBC);
 
   // Set combined conditional formatting rules
   sheet.setConditionalFormatRules(allRules);
