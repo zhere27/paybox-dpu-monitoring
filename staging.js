@@ -1,3 +1,20 @@
+function test_hasSpecialCollectionConditions() {
+ console.log(hasSpecialCollectionConditions('For collection on Aug 25','Aug 23')); 
+}
+function test_excludeAlreadyCollected(machineName='PLDT SURIGAO', srvBank='Apeiros') {
+  console.log(skipAlreadyCollected(machineName, srvBank));
+}
+
+function test_isTomorrowHoliday() {
+  var { todayDate, tomorrowDate, todayDateString, tomorrowDateString } = getTodayAndTomorrowDates();
+
+  console.log(isTomorrowHoliday(tomorrowDate));
+}
+
+function test_forExclusionRequestYesterday(machineName='SMART SM CEBU 2', srvBank='Brinks via BPI') {
+  console.log(forExclusionRequestYesterday(machineName, srvBank))
+}
+
 function test_shouldExcludeFromCollection_stg() {
   const lastRequest = '';
   const todayDay = 'Aug 18';
@@ -56,5 +73,10 @@ function shouldExcludeFromCollection_stg(lastRequest, todayDay, machineName = nu
   }
 }
 
+function test_meetsAmountThreshold(amountValue=151000, collectionDay, srvBank='Brinks via BPI') {
+  console.log(meetsAmountThreshold(amountValue, collectionDay, srvBank));
+}
 
-
+function test_addMachineToAdvanceNotice(machineName='PLDT SURIGAO') {
+  addMachineToAdvanceNotice(machineName);
+}

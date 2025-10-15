@@ -10,8 +10,8 @@
  */
 function getTodayAndTomorrowDates() {
   const timeZone = Session.getScriptTimeZone();
-  // const todayDate = new Date(2025,7,4); //August 4, 2025
-  const todayDate = new Date();
+  let todayDate = new Date();
+  // todayDate = new Date(2025,9,3); //Month is 0-based in JS
   const tomorrowDate = new Date(todayDate);
   tomorrowDate.setDate(todayDate.getDate() + 1);
 
@@ -20,7 +20,30 @@ function getTodayAndTomorrowDates() {
     tomorrowDate,
     todayDateString: Utilities.formatDate(todayDate, timeZone, "MMM d"),
     tomorrowDateString: Utilities.formatDate(tomorrowDate, timeZone, "MMM d"),
+    isTomorrowHoliday: isTomorrowHoliday(tomorrowDate),
   };
+}
+
+/**
+ * Gets the next Monday from today
+ * If today is Monday, returns today
+ *
+ * @returns {Date} Next Monday date
+ */
+function getNextMonday() {
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
+  // Calculate days until next Monday
+  // If today is Monday (1), daysUntilMonday = 0
+  // If today is Tuesday (2), daysUntilMonday = 6
+  // If today is Sunday (0), daysUntilMonday = 1
+  const daysUntilMonday = dayOfWeek === 1 ? 0 : (8 - dayOfWeek) % 7;
+
+  const nextMonday = new Date(today);
+  nextMonday.setDate(today.getDate() + daysUntilMonday);
+
+  return nextMonday;
 }
 
 /**
@@ -60,7 +83,7 @@ function shouldSkipExecution(todayDate) {
  * @param {string} emailBcc - Email recipients (bcc)
  * @param {string} srvBank - Service bank
  */
-function processCollections(forCollections, tomorrowDate, emailTo, emailCc, emailBcc, srvBank) {
+function processCollectionsAndSendEmail(forCollections, tomorrowDate, emailTo, emailCc, emailBcc, srvBank) {
   try {
     if (!forCollections || forCollections.length === 0) {
       CustomLogger.logInfo("No collections to process.", PROJECT_NAME, "processCollections()");
@@ -89,10 +112,11 @@ function processCollections(forCollections, tomorrowDate, emailTo, emailCc, emai
 
     // Saturday collection limit is only applicable to Brinks via BPI
     if (collectionDate.getDay() === 6 && srvBank === "Brinks via BPI") {
+      // 6-Saturday
       if (forCollections.length > 4) {
         const collectionsForMonday = forCollections.slice(4);
-        const collectionDateForMonday = new Date();
-        collectionDateForMonday.setDate(collectionDateForMonday.getDate() + 3);
+        const collectionDateForMonday = getNextMonday();
+        // collectionDateForMonday.setDate(collectionDateForMonday.getDate() + 3);
         sendEmailCollection(collectionsForMonday, collectionDateForMonday, emailTo, emailCc, emailBcc, srvBank);
       }
 
@@ -107,6 +131,17 @@ function processCollections(forCollections, tomorrowDate, emailTo, emailCc, emai
 }
 
 // === Spreadsheet Functions === //
+
+function addMachineToAdvanceNotice(machineName) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetName = `Advance Notice`;
+
+  // Check if the sheet already exists
+  let sheet = spreadsheet.getSheetByName(sheetName);
+  if (sheet) {
+    sheet.appendRow([machineName]);
+  }
+}
 
 /**
  * Creates a hidden worksheet and adds data
@@ -147,8 +182,8 @@ function createHiddenWorksheetAndAddData(forCollections, srvBank) {
     // Hide the sheet
     sheet.hideSheet();
 
-    // Adjust column width for better readability
-    sheet.autoResizeColumns(1, 1);
+    // Adjust column A width for better readability
+    sheet.autoResizeColumn(1);
 
     CustomLogger.logInfo(`Updated for collection worksheet "${sheetName}" with ${numRows} rows.`, PROJECT_NAME, "createHiddenWorksheetAndAddData()");
   } catch (error) {
@@ -157,185 +192,57 @@ function createHiddenWorksheetAndAddData(forCollections, srvBank) {
   }
 }
 
-/**
- * Filters out past collection requests from the provided array, keeping only requests for the specified tomorrow date.
- * Also sorts the resulting array by machine name.
- *
- * @param {Array<Array>} forCollections - The array of collection request items, where each item is an array and the machine name is at index 0, and the collection info is at index 4.
- * @param {string} tomorrowDateString - The date string representing tomorrow, used to filter requests.
- * @returns {Array<Array>} The filtered and sorted array of collection requests.
- * @throws {Error} If an error occurs during filtering or sorting.
- */
-function excludePastRequests(forCollections, tomorrowDateString) {
+function skipAlreadyCollected(machineName, forCollectionData) {
   try {
-    if (!forCollections || forCollections.length === 0) {
-      CustomLogger.logInfo("No collections to filter.", PROJECT_NAME, "excludePastRequests()");
-      return forCollections;
+    if (!forCollectionData || forCollectionData.length === 0) {
+      CustomLogger.logInfo("No collection data worksheet.", PROJECT_NAME, "skipAlreadyCollected()");
+      return;
     }
 
-    // using while forCollection and check forCollections[4] contains For Collection case incensitive
-    forCollections = forCollections.filter((item) => {
-      if (item[4].toLowerCase().includes("for collection")) {
-        if (item[4].toLowerCase() !== "for collection on " + tomorrowDateString.toLowerCase()) {
-          CustomLogger.logInfo(`Excluded past request: ${item[0]} - ${item[4]}`, PROJECT_NAME, "excludePastRequests()");
-          return false;
-        }
+    var result = null;
+    for (var i = 0; i < forCollectionData.length; i++) {
+      if (forCollectionData[i][0] === machineName) {
+        result = forCollectionData[i][5]; // column 3
+        break; // stop after first match
       }
-      return true;
-    });
+    }
 
-    //Sort by machine name
-    forCollections.sort((a, b) => a[0].toLowerCase().localeCompare(b[0].toLowerCase()));
+    if (result) {
+      CustomLogger.logInfo(`Skipping collection for ${machineName}, it is already collected. `, PROJECT_NAME, "skipAlreadyCollected()");
+      return result;
+    }
 
-    CustomLogger.logInfo(`Done excluding past requested machines.`, PROJECT_NAME, "excludePastRequests()");
-    return forCollections;
+    return;
   } catch (error) {
-    CustomLogger.logError(`Error in excludePastRequests(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, "excludePastRequests()");
+    CustomLogger.logError(`Error in skipAlreadyCollected(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, "skipAlreadyCollected()");
     throw error;
   }
 }
 
 /**
- * Filters out collections that have already been requested, based on machine names listed in a specific sheet.
- *
- * @param {Array<Array<any>>} forCollections - The list of collections to filter. Each collection is assumed to be an array, with the machine name in the first element.
- * @param {string} srvBank - The bank/service identifier used to determine the sheet name (e.g., "For Collection -{srvBank}").
- * @returns {Array<Array<any>>} The filtered list of collections, excluding those that have already been requested.
- * @throws {Error} If an error occurs during processing.
+ * Retrieves data from the "For Collection" worksheet
+ * @param {string} srvBank - Service bank
+ * @return {Array} Data from the "For Collection" worksheet
+ * @throws {Error} If the "For Collection" worksheet is not found
  */
-function excludePreviouslyRequested(forCollections, srvBank) {
-  try {
-    if (!forCollections || forCollections.length === 0) {
-      CustomLogger.logInfo("No collections to filter.", PROJECT_NAME, "excludePreviouslyRequested()");
-      return forCollections;
-    }
+function getForCollections(srvBank) {
+  // Open the active spreadsheet
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetName = `For Collection -${srvBank}`;
+  const sheet = spreadsheet.getSheetByName(sheetName);
 
-    // Open the active spreadsheet
-    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const sheetName = `For Collection -${srvBank}`;
-    const sheet = spreadsheet.getSheetByName(sheetName);
-
-    if (!sheet) {
-      CustomLogger.logInfo(`Sheet "${sheetName}" not found. No previous collections to exclude.`, PROJECT_NAME, "excludePreviouslyRequested()");
-      return forCollections;
-    }
-
-    // Get previously requested machine names from Column A
-    const previouslyRequested = getMachineNamesFromColumnA(sheet);
-    if (!previouslyRequested || previouslyRequested.length === 0) {
-      CustomLogger.logInfo("No previously collected machines found.", PROJECT_NAME, "excludePreviouslyRequested()");
-      return forCollections;
-    }
-
-    // Use a Set for faster lookups
-    const previouslyRequestedSet = new Set(previouslyRequested);
-
-    // Filter out previously requested machines
-    const filteredCollections = forCollections.filter((collection) => {
-      const machineName = collection[0]; // Assuming machine names are in the first column
-      var returnVal = !previouslyRequestedSet.has(machineName);
-      return returnVal;
-    });
-
-    const removedCount = forCollections.length - filteredCollections.length;
-    if (removedCount > 0) {
-      CustomLogger.logInfo(`Removed ${removedCount} previously collected machines from collection list.`, PROJECT_NAME, "excludePreviouslyRequested()");
-    }
-
-    return filteredCollections;
-  } catch (error) {
-    CustomLogger.logError(`Error in excludePreviouslyRequested(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, "excludePreviouslyRequested()");
-    throw error;
+  if (!sheet) {
+    CustomLogger.logInfo(`Sheet "${sheetName}" not found for reference of recently collected machines.`, PROJECT_NAME, "getForCollections()");
+    throw new Error(`Sheet named "${sheetName}" not found.`);
   }
-}
 
-/**
- * Removes all occurrences of specified excluded items from the given collections array.
- *
- * @param {Array} forCollections - The array of collections to filter.
- * @param {Array} excludeExpiredForCollections - The array of items to exclude from forCollections.
- * @returns {Array} The filtered array with excluded items removed.
- */
-function removeExcludedCollections(forCollections, excludeExpiredForCollections) {
-  excludeExpiredForCollections.forEach((excludeItem) => {
-    let index;
-    while ((index = forCollections.indexOf(excludeItem)) !== -1) {
-      forCollections.splice(index, 1);
-    }
-  });
+  //Iterate through the sheet and exclude machine name in column A and column F that has value TRUE from the forCollections
+  const lastRow = sheet.getLastRow();
+
+  // convert sheet range to array
+  var forCollections = sheet.getRange(2, 1, lastRow - 1, 6).getValues();
+
   return forCollections;
-}
-
-/**
- * Filters out machines from the forCollections array that have been recently collected,
- * based on data from the "For Collection -{srvBank}" sheet in the active spreadsheet.
- * Machines are excluded if their name appears in column A and column F has a TRUE value.
- *
- * @param {Array<Array<any>>} forCollections - Array of collections to filter. Each collection is expected to be an array where the first element is the machine name.
- * @param {string} srvBank - The service bank identifier used to select the appropriate sheet.
- * @returns {Array<Array<any>>} The filtered array of collections, excluding recently collected machines.
- * @throws {Error} If an error occurs during processing.
- */
-function excludeRecentlyCollected(forCollections, srvBank) {
-  try {
-    if (!forCollections || forCollections.length === 0) {
-      CustomLogger.logInfo("No collections to filter.", PROJECT_NAME, "excludeRecentlyCollected()");
-      return forCollections;
-    }
-
-    // Open the active spreadsheet
-    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const sheetName = `For Collection -${srvBank}`;
-    const sheet = spreadsheet.getSheetByName(sheetName);
-
-    if (!sheet) {
-      CustomLogger.logInfo(`Sheet "${sheetName}" not found for reference of recently collected machines.`, PROJECT_NAME, "excludeRecentlyCollected()");
-      return forCollections;
-    }
-
-    //Iterate through the sheet and exclude machine name in column A and column F that has value TRUE from the forCollections
-    const lastRow = sheet.getLastRow();
-    const data = sheet.getRange(2, 1, lastRow - 1, 6).getValues();
-
-    data.forEach((row) => {
-      const machineName = row[0];
-      const isRecentlyCollected = row[5]; // index 5 for column 6
-
-      if (isRecentlyCollected) {
-        CustomLogger.logInfo(`Excluded recently collected machine: ${machineName}`, PROJECT_NAME, "excludeRecentlyCollected()");
-        forCollections = forCollections.filter((collection) => collection[0] !== machineName);
-      }
-    });
-
-    return forCollections;
-  } catch (error) {
-    CustomLogger.logError(`Error in excludeRecentlyCollected(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, "excludeRecentlyCollected()");
-    throw error;
-  }
-}
-
-/**
- * Fetches machine names from Column A of a given sheet.
- * @param {Sheet} sheet - The sheet to fetch machine names from
- * @return {Array<string>} List of machine names from Column A
- */
-function getMachineNamesFromColumnA(sheet) {
-  try {
-    const lastRow = sheet.getLastRow();
-    if (lastRow < 2) {
-      return []; // No data after the header row
-    }
-
-    // Get data from A2 to the last row
-    const range = sheet.getRange(`A2:A${lastRow}`);
-    const values = range.getValues();
-
-    // Flatten the array and filter out empty cells
-    return values.flat().filter((name) => name);
-  } catch (error) {
-    CustomLogger.logError(`Error in getMachineNamesFromColumnA(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, "getMachineNamesFromColumnA()");
-    throw error;
-  }
 }
 
 // === Collection Logic Functions === //
@@ -359,19 +266,19 @@ function shouldIncludeForCollection(machineName, amountValue, translatedBusiness
 
     // 1. Check if excluded store
     if (isExcludedStore(machineName)) {
-      CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, part of the excluded stores.`, PROJECT_NAME, "shouldIncludeForCollection");
+      CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, part of the excluded stores.`, PROJECT_NAME, "shouldIncludeForCollection()");
       return false;
     }
 
     // 2. Check business days
     if (!translatedBusinessDays.includes(collectionDay)) {
-      CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, not a collection day.`, PROJECT_NAME, "shouldIncludeForCollection");
+      CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, not a collection day.`, PROJECT_NAME, "shouldIncludeForCollection()");
       return false;
     }
 
     // 3. Check weekend restrictions
-    if (shouldSkipWeekendCollections(srvBank, tomorrowDate)) {
-      CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, during weekends.`, PROJECT_NAME, "shouldIncludeForCollection");
+    if (skipWeekendCollections(srvBank, tomorrowDate)) {
+      CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, during weekends.`, PROJECT_NAME, "shouldIncludeForCollection()");
       return false;
     }
 
@@ -383,12 +290,12 @@ function shouldIncludeForCollection(machineName, amountValue, translatedBusiness
     }
 
     // 2. Schedule-based store collections
-    if (SCHEDULE_CONFIG.stores.includes(machineName)) {
+    if (CONFIG.SCHEDULE_BASED.stores.includes(machineName)) {
       return shouldCollectScheduleBasedStore(machineName, dayOfWeek);
     }
 
     // 3. Regular threshold-based collection
-    if (meetsAmountThreshold(amountValue, collectionDay)) {
+    if (meetsAmountThreshold(amountValue, collectionDay, srvBank)) {
       return true;
     }
 
@@ -447,16 +354,158 @@ function forExclusionBasedOnRemarks(lastRequest, todayDay, machineName = null) {
 
     // Log exclusion if machine name provided and excluded
     if (isExcluded && machineName) {
-      CustomLogger.logInfo(`Machine "${machineName}" excluded - Last remarks: "${lastRequest}"`, PROJECT_NAME, "forExclusionBasedOnRemarks");
+      CustomLogger.logInfo(`Skipping collection for machine ${machineName}, last remarks is "${lastRequest}".`, PROJECT_NAME, "forExclusionBasedOnRemarks()");
     }
 
     return isExcluded;
   } catch (error) {
-    CustomLogger.logError(`Error in shouldExcludeFromCollection(): ${error.message}`, PROJECT_NAME, "forExclusionBasedOnRemarks");
+    CustomLogger.logError(`Error in shouldExcludeFromCollection(): ${error.message}`, PROJECT_NAME, "forExclusionBasedOnRemarks()");
     return false; // Fail-safe: don't exclude on error
   }
 }
 
+/**
+ * Checks if a remark indicates an exclusion is scheduled for a date *after* tomorrow.
+ * * Returns:
+ * - true: The remark contains "for collection on [Date]" AND that date is in the future 
+ * (after the date provided by tomorrowDate).
+ * - false: The remark does not contain the phrase, the date is invalid, or the date is
+ * tomorrow or in the past.
+ * * @param {string} machineName - Unused, retained for original function signature compatibility.
+ * @param {Date} tomorrowDate - The reference date used for comparison (e.g., "tomorrow").
+ * @param {string} lastRemark - The string to check for the exclusion phrase and date.
+ */
+function forExclusionNotYetScheduled(machineName, tomorrowDate, lastRemark) {
+  // Configuration
+  const EXCLUSION_PHRASE = 'for collection on';
+  // Regex captures the month and day (e.g., "Oct 15")
+  const DATE_PATTERN = /for collection on\s+([a-z]+\s+\d{1,2})/i;
+
+  // Normalize input for basic phrase check
+  const normalizedRemark = lastRemark.toLowerCase().trim();
+
+  // 1. Check if the exclusion phrase exists
+  if (!normalizedRemark.includes(EXCLUSION_PHRASE)) {
+    return false;
+  }
+
+  // 2. Extract date from remark
+  const match = DATE_PATTERN.exec(lastRemark);
+  if (!match) {
+    return false; // Phrase exists but date format is wrong
+  }
+
+  // 3. Parse the collection date
+  const collectionDateStr = match[1]; // e.g., "Oct 15"
+  // Use the year from the tomorrowDate parameter for accurate comparison
+  const currentYear = tomorrowDate.getFullYear();
+  // Attempt to create a Date object using the extracted month/day and the current year
+  const collectionDate = new Date(`${collectionDateStr}, ${currentYear}`);
+
+  // 4. Handle invalid date parsing
+  if (isNaN(collectionDate.getTime())) {
+    return false;
+  }
+
+  // 5. Normalize dates to midnight for comparison (remove time component)
+  // This ensures comparison is purely based on the day
+  const tomorrowMidnight = new Date(
+    tomorrowDate.getFullYear(), 
+    tomorrowDate.getMonth(), 
+    tomorrowDate.getDate()
+  );
+  const collectionMidnight = new Date(
+    collectionDate.getFullYear(), 
+    collectionDate.getMonth(), 
+    collectionDate.getDate()
+  );
+
+  // 6. Return true if collection date is strictly AFTER tomorrow's date (not yet scheduled)
+  return collectionMidnight > tomorrowMidnight;
+}
+
+
+// function forExclusionNotYetScheduled(machineName, tomorrowDate, lastRemark) {
+//   // Configuration
+//   const EXCLUSION_PHRASE = 'for collection on';
+//   const DATE_PATTERN = /for collection on\s+([a-z]+\s+\d{1,2})/i;
+
+//   // Normalize input
+//   const normalizedRemark = lastRemark.toLowerCase().trim();
+
+//   // Check if exclusion phrase exists
+//   if (!normalizedRemark.includes(EXCLUSION_PHRASE)) {
+//     return false;
+//   }
+
+//   // Extract date from remark
+//   const match = DATE_PATTERN.exec(lastRemark);
+//   if (!match) {
+//     return false;
+//   }
+
+//   // Parse the collection date
+//   const collectionDateStr = match[1]; // e.g., "Oct 15"
+//   const currentYear = tomorrowDate.getFullYear();
+//   const collectionDate = new Date(`${collectionDateStr}, ${currentYear}`);
+
+//   // Handle invalid date parsing
+//   if (isNaN(collectionDate.getTime())) {
+//     return false;
+//   }
+
+//   // Normalize dates to midnight for comparison (remove time component)
+//   const tomorrowMidnight = new Date(tomorrowDate.getFullYear(), tomorrowDate.getMonth(), tomorrowDate.getDate());
+//   const collectionMidnight = new Date(collectionDate.getFullYear(), collectionDate.getMonth(), collectionDate.getDate());
+
+//   // Return true if collection date is AFTER tomorrow (not yet scheduled)
+//   return collectionMidnight > tomorrowMidnight;
+// }
+
+function forExclusionRequestYesterday(previouslyRequestedMachines, machineName, srvBank) {
+  // Use includes() for faster searching
+  const isExcluded = previouslyRequestedMachines.includes(machineName);
+
+  if (isExcluded) {
+    CustomLogger.logInfo(`Skipping collection for machine: ${machineName}, requested for collection yesterday.`, PROJECT_NAME, "forExclusionRequestYesterday()");
+  }
+
+  return isExcluded;
+}
+
+function getPreviouslyRequestedMachineNamesByServiceBank(srvBank) {
+  var machineNames = [];
+  if (CONFIG.APP.ENVIRONMENT !== 'production') { return machineNames; }
+
+  //validate srvBank if null or blank
+  if (srvBank == null || srvBank == "") {
+    CustomLogger.logInfo(`Service bank not found for reference of recently collected machines.`, PROJECT_NAME, "getPreviouslyRequestedMachineNamesByServiceBank()");
+    return machineNames;
+  }
+
+  // Open the active spreadsheet
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetName = `For Collection -${srvBank}`;
+  const sheet = spreadsheet.getSheetByName(sheetName);
+
+  if (!sheet) {
+    CustomLogger.logInfo(`Sheet "${sheetName}" not found for reference of recently collected machines.`, PROJECT_NAME, "getPreviouslyRequestedMachineNamesByServiceBank()");
+    return machineNames;
+  }
+
+  // Get only column A data (machine names) for faster searching
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return false; // No data rows
+
+  machineNames = sheet
+    .getRange(2, 1, lastRow - 1, 1)
+    .getValues()
+    .flat()
+    .filter(function (item) {
+      return item != null && item !== "";
+    });
+  return machineNames;
+}
 /**
  * Checks if tomorrow is a holiday
  * @param {Date} tomorrow - Tomorrow's date
@@ -485,11 +534,12 @@ function isTomorrowHoliday(tomorrow) {
     // Check if tomorrow is a holiday
     for (const row of data) {
       const holidayDate = row[0];
+      const holiday = row[1];
       const holidayType = row[2];
 
       if (holidayDate instanceof Date && holidayType && validHolidayTypes.includes(holidayType)) {
         if (holidayDate.getTime() === normalizedTomorrow.getTime()) {
-          CustomLogger.logInfo(`Tomorrow (${formatDate(tomorrow, "MMM d, yyyy")}) is a holiday: ${holidayType}`, PROJECT_NAME, "isTomorrowHoliday()");
+          // CustomLogger.logInfo(`Tomorrow (${formatDate(tomorrow, "MMM d, yyyy")}) is a holiday: ${holiday} - ${holidayType}`, PROJECT_NAME, "isTomorrowHoliday()");
           return true;
         }
       }
@@ -590,9 +640,7 @@ function convertArrayToJson(data) {
  * @returns {boolean} - True if machine should be excluded
  */
 function isExcludedStore(machineName) {
-  const excludedStores = [
-    "SMART LIMKETKAI CDO 2"
-  ];
+  const excludedStores = ["SMART LIMKETKAI CDO 2"];
   return excludedStores.includes(machineName);
 }
 
@@ -602,8 +650,8 @@ function isExcludedStore(machineName) {
  * @param {Date} date - The date to check
  * @returns {boolean} - True if should skip weekend collection
  */
-function shouldSkipWeekendCollections(srvBank, date) {
-  const dpuPartners = ["BPI", "BPI Internal", "Apeiros"];
+function skipWeekendCollections(srvBank, date) {
+  const dpuPartners = ["BPI", "BPI Internal"];
   const weekendDays = [dayIndex["Sat."], dayIndex["Sun."]];
 
   return dpuPartners.includes(srvBank) && weekendDays.includes(date.getDay());
@@ -612,13 +660,13 @@ function shouldSkipWeekendCollections(srvBank, date) {
 /**
  * Checks if the last request contains special collection conditions
  * @param {string} lastRequest - The last request string
- * @param {string} dateString - The formatted date string
+ * @param {string} tomorrowDateString - The formatted date string
  * @returns {boolean} - True if special conditions are met
  */
-function hasSpecialCollectionConditions(lastRequest, dateString) {
+function hasSpecialCollectionConditions(lastRequest, tomorrowDateString) {
   if (!lastRequest) return false;
+  const lowerDateString = tomorrowDateString.toLowerCase();
 
-  const lowerDateString = dateString.toLowerCase();
   const specialConditions = [
     `for replacement of cassette on ${lowerDateString}`,
     `for collection on ${lowerDateString}`,
@@ -651,7 +699,7 @@ const SCHEDULE_CONFIG = {
  * @returns {boolean} - True if collection should occur
  */
 function shouldCollectScheduleBasedStore(machineName, dayOfWeek) {
-  const schedule = SCHEDULE_CONFIG.schedules[machineName];
+  const schedule = CONFIG.SCHEDULE_BASED.schedules[machineName];
   return schedule ? schedule.includes(dayOfWeek) : false;
 }
 
@@ -661,7 +709,26 @@ function shouldCollectScheduleBasedStore(machineName, dayOfWeek) {
  * @param {string} collectionDay - The collection day
  * @returns {boolean} - True if threshold is met
  */
-function meetsAmountThreshold(amountValue, collectionDay) {
+function meetsAmountThreshold(amountValue, collectionDay, srvBank) {
+  // START SPECIAL CONDITIONS (requested by Sherwin Sept 25-26, 2025 to apply BPI dpu conditions of 150k threshold)
+  // Alternative: Hardcoded specific dates (September 25-26, 2025)
+  const currentDate = new Date();
+  const targetDate1 = new Date("2025-09-25");
+  const targetDate2 = new Date("2025-09-26");
+
+  // Set all dates to start of day for accurate comparison
+  currentDate.setHours(0, 0, 0, 0);
+  targetDate1.setHours(0, 0, 0, 0);
+  targetDate2.setHours(0, 0, 0, 0);
+
+  const isValidDate = currentDate.getTime() === targetDate1.getTime() || currentDate.getTime() === targetDate2.getTime();
+
+  // Only apply BPI condition on specified dates
+  if (srvBank.includes("BPI") && amountValue >= 150000 && isValidDate) {
+    return true;
+  }
+  // END SPECIAL CONDITIONS
+
   return amountValue >= amountThresholds[collectionDay];
 }
 
@@ -708,4 +775,41 @@ function getExclusionReasons(todayDay) {
   ];
 
   return todayDay ? [...baseReasons, todayDay.toLowerCase().trim()] : baseReasons;
+}
+
+function addMachineToAdvanceNotice(machineName) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetName = `Advance Notice`;
+
+  // Check if the sheet already exists
+  let sheet = spreadsheet.getSheetByName(sheetName);
+  if (sheet) {
+    sheet.appendRow([machineName]);
+  }
+}
+
+function forExclusionPartOfAdvanceNotice() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetName = `Advance Notice`;
+
+  let sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) {
+    return false;
+  }
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return null; // No data rows
+
+  const machineNames = sheet
+    .getRange(2, 1, lastRow - 1, 1)
+    .getValues()
+    .flat()
+    .filter(function (item) {
+      return item != null && item !== "";
+    });
+  return machineNames;
+}
+
+function saveEligibleCollectionsToBQ(eligibleCollections) {
+
 }

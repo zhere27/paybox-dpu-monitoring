@@ -5,7 +5,6 @@ function createTimeDrivenTriggers() {
   deleteExistingTriggers("exportSheetAndSendEmail");
   deleteExistingTriggers("eTapCollectionsLogic");
   deleteExistingTriggers("bpiBrinkCollectionsLogic");
-  deleteExistingTriggers("bpiCollectionsLogic");
   deleteExistingTriggers("bpiInternalCollectionsLogic");
   deleteExistingTriggers("apeirosCollectionsLogic");
   deleteExistingTriggers("resetCollectionRequests");
@@ -25,13 +24,11 @@ function createTimeDrivenTriggers() {
 
   ScriptApp.newTrigger("bpiBrinkCollectionsLogic").timeBased().everyDays(1).atHour(15).nearMinute(30).create();
 
-  ScriptApp.newTrigger("bpiCollectionsLogic").timeBased().everyDays(1).atHour(15).nearMinute(30).create();
-
   ScriptApp.newTrigger("bpiInternalCollectionsLogic").timeBased().everyDays(1).atHour(15).nearMinute(30).create();
 
   ScriptApp.newTrigger("eTapCollectionsLogic").timeBased().everyDays(1).atHour(15).nearMinute(30).create();
 
-  ScriptApp.newTrigger("sendAdvancedNotice").timeBased().everyDays(1).atHour(15).nearMinute(30).create();
+  ScriptApp.newTrigger("sendAdvancedNotice").timeBased().everyDays(1).atHour(17).create();
 
   ScriptApp.newTrigger("apeirosCollectionsLogic").timeBased().everyDays(1).atHour(17).create();
 

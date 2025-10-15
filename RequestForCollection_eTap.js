@@ -1,79 +1,186 @@
 function eTapCollectionsLogic() {
-  CustomLogger.logInfo("Running eTap Collections Logic...", PROJECT_NAME, "eTapCollectionsLogic()");
-  const environment = "production"; //testing
-  const srvBank = "eTap";
-  const { todayDate, tomorrowDate, todayDateString, tomorrowDateString } = getTodayAndTomorrowDates();
-  const tomorrowDateFormatted = Utilities.formatDate(tomorrowDate, Session.getScriptTimeZone(), "MMMM d, yyyy (EEEE)");
-  const subject = `${srvBank} DPU Request - ${tomorrowDateFormatted}`;
-
-  const ENV_EMAIL_RECIPIENTS = {
-    production: {
-      to: "christian@etapinc.com,jayr@etapinc.com,rodison.carapatan@etapinc.com,arnel@etapinc.com,ian.estrella@etapinc.com,roldan@etapinc.com,dante@etapinc.com,ramun.hamtig@etapinc.com,jellymae.osorio@etapinc.com,rojane@etapinc.com, A.jloro@etapinc.com",
-      cc: "reinier@etapinc.com,miguel@etapinc.com,alvie@etapinc.com,rojane@etapinc.com,laila@etapinc.com,johnmarco@etapinc.com,ghie@etapinc.com, etap-recon@etapinc.com, Erwin Alcantara <egalcantara@multisyscorp.com>, cvcabanilla@multisyscorp.com, gmmrectin@multisyscorp.com, amlaurio@multisyscorp.com",
-      bcc: "mvolbara@pldt.com.ph, RBEspayos@smart.com.ph ",
-    },
-    testing: {
-      to: "Erwin Alcantara <egalcantara@multisyscorp.com>",
-      cc: "Erwin Alcantara <egalcantara@multisyscorp.com>",
-      bcc: "",
-    },
-  };
-
-  // Usage
-  const emailRecipients = ENV_EMAIL_RECIPIENTS[environment] || ENV_EMAIL_RECIPIENTS.testing;
+  CustomLogger.logInfo('Running eTap Collections Logic...', CONFIG.APP.NAME, 'eTapCollectionsLogic');
 
   try {
-    const machineData = getMachineDataByPartner(srvBank);
-    const [machineNames, percentValues, amountValues, collectionPartners, collectionSchedules, lastAddress, lastRemarks, businessDays] = machineData;
+    // Get date information
+    const dateInfo = getTodayAndTomorrowDates();
+    const { todayDate, tomorrowDate, todayDateString, tomorrowDateString, isTomorrowHoliday } = dateInfo;
 
-    // Special machines that need to be collected together
-    const specialMachines = new Set(["PLDT BANTAY", "SMART VIGAN"]);
-    let forCollections = [];
+    // Get email recipients based on environment
+    const emailRecipients = getEmailRecipientsETap(CONFIG.ETAP.ENVIRONMENT);
 
-    machineNames.forEach((machineNameArr, i) => {
-      const machineName = machineNameArr[0];
-      const amountValue = amountValues[i][0];
-      const collectionSchedule = collectionSchedules[i][0];
-      const lastRemark = normalizeSpaces(lastRemarks[i][0]);
-      const businessDay = businessDays[i][0];
-      const translatedBusinessDays = translateDaysToAbbreviation(businessDay.trim());
+    // Generate email subject
+    const subject = generateEmailSubjectETap(tomorrowDate, CONFIG.ETAP.SERVICE_BANK);
 
-      // Skip if it's a holiday and the machine has no-holiday schedule
-      if (collectionSchedule.includes("No-Holiday") && isTomorrowHoliday(tomorrowDate)) {
-        Customlogger.logInfo(`Exclude ${machineName} from DPU for tomorrow because it's a holiday and no store-in-charge.`, PROJECT_NAME, "eTapCollectionsLogic");
-        return;
-      }
+    // Get machine data and filter for eligible collections
+    const eligibleCollections = getEligibleCollectionsETap(todayDate, tomorrowDate, todayDateString, tomorrowDateString, isTomorrowHoliday, subject);
 
-      // Skip if the last request should be excluded
-      if (forExclusionBasedOnRemarks(lastRemark, todayDateString, machineName)) {
-        return;
-      }
-
-      // Check if we should include this machine in the collection
-      if (shouldIncludeForCollection(machineName, amountValue, translatedBusinessDays, tomorrowDate, tomorrowDateString, todayDate, lastRemark, srvBank)) {
-        const isForRevisit = lastRemark.toLowerCase().includes(`for revisit on ${tomorrowDateString.toLowerCase()}`);
-        const displayName = `${machineName}${isForRevisit ? ` (<b>${lastRemark}</b>)` : ""}`;
-
-        if (specialMachines.has(machineName)) {
-          // Add both special machines if either one qualifies
-          specialMachines.forEach((specialMachine) => {
-            if (!forCollections.some((entry) => entry[0] === specialMachine)) {
-              forCollections.push([specialMachine, amountValue, srvBank, subject]);
-            }
-          });
-        } else {
-          forCollections.push([displayName, amountValue, srvBank, subject]);
-        }
-      }
-    });
-
-    if (environment === "production" && forCollections.length > 0) {
-      createHiddenWorksheetAndAddData(forCollections, srvBank);
-      processCollections(forCollections, tomorrowDate, emailRecipients.to, emailRecipients.cc, emailRecipients.bcc, srvBank);
+    // Process collections if any are eligible (production only)
+    if (CONFIG.ETAP.ENVIRONMENT === 'production' && eligibleCollections.length > 0) {
+      processEligibleCollectionsETap(eligibleCollections, tomorrowDate, emailRecipients);
+    } else if (eligibleCollections.length === 0) {
+      CustomLogger.logInfo('No eligible stores for collection tomorrow.', CONFIG.APP.NAME, 'eTapCollectionsLogic');
     } else {
-      CustomLogger.logInfo("No eligible stores for collection tomorrow.", PROJECT_NAME, "eTapCollectionsLogic");
+      CustomLogger.logInfo(`Testing mode: ${eligibleCollections.length} collections identified but not sent.`, CONFIG.APP.NAME, 'eTapCollectionsLogic');
+      console.log(JSON.stringify(eligibleCollections, null, 2));
     }
+
   } catch (error) {
-    CustomLogger.logError(`Error in eTapCollectionsLogic: ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, "eTapCollectionsLogic");
+    CustomLogger.logError(`Error in eTapCollectionsLogic: ${error.message}\nStack: ${error.stack}`, CONFIG.APP.NAME, 'eTapCollectionsLogic');
+    throw error;
+  }
+}
+
+/**
+ * Get email recipients based on environment
+ */
+function getEmailRecipientsETap(environment) {
+  return CONFIG.ETAP.EMAIL_RECIPIENTS[environment] || CONFIG.ETAP.EMAIL_RECIPIENTS.testing;
+}
+
+/**
+ * Generate email subject line
+ */
+function generateEmailSubjectETap(tomorrowDate, serviceBank) {
+  const formattedDate = Utilities.formatDate(
+    tomorrowDate,
+    Session.getScriptTimeZone(),
+    "MMMM d, yyyy (EEEE)"
+  );
+  return `${serviceBank} DPU Request - ${formattedDate}`;
+}
+
+/**
+ * Get eligible collections based on criteria
+ */
+function getEligibleCollectionsETap(todayDate, tomorrowDate, todayDateString, tomorrowDateString, isTomorrowHoliday, subject) {
+  const srvBank = CONFIG.ETAP.SERVICE_BANK;
+
+  // Fetch data
+  const machineData = getMachineDataByPartner(srvBank);
+  const forCollectionData = getForCollections(srvBank);
+  const previouslyRequestedMachines = getPreviouslyRequestedMachineNamesByServiceBank(srvBank);
+
+  // Destructure machine data
+  const [machineNames, percentValues, amountValues, collectionPartners, collectionSchedules, lastAddress, lastRemarks, businessDays] = machineData;
+
+  // Filter eligible collections
+  const eligibleCollections = [];
+  const specialMachinesAdded = new Set();
+
+  machineNames.forEach((machineNameArr, i) => {
+    const machineName = machineNameArr[0];
+    const amountValue = amountValues[i][0];
+    const collectionSchedule = collectionSchedules[i][0];
+    const lastRemark = normalizeSpaces(lastRemarks[i][0]);
+    const businessDay = businessDays[i][0];
+
+    // Apply exclusion filters
+    if (shouldExcludeMachineETap(machineName, amountValue, collectionSchedule, lastRemark, businessDay, forCollectionData, previouslyRequestedMachines, todayDate, tomorrowDate, todayDateString, tomorrowDateString, isTomorrowHoliday, srvBank)) {
+      return; // Skip this machine
+    }
+
+    // Handle special machines that must be collected together
+    if (CONFIG.ETAP.SPECIAL_MACHINES.has(machineName)) {
+      addSpecialMachines(eligibleCollections, specialMachinesAdded, amountValue, srvBank, subject);
+    } else {
+      // Format machine name with remark if it's a revisit
+      const displayName = formatMachineNameWithRemarkETap(machineName, lastRemark, tomorrowDateString);
+      eligibleCollections.push([displayName, amountValue, srvBank, subject]);
+    }
+  });
+
+  return eligibleCollections;
+}
+
+/**
+ * Determine if machine should be excluded from collection
+ */
+function shouldExcludeMachineETap(machineName, amountValue, collectionSchedule, lastRemark, businessDay, forCollectionData, previouslyRequestedMachines, todayDate, tomorrowDate, todayDateString, tomorrowDateString, isTomorrowHoliday, srvBank) {
+  // Check 1: Already collected
+  if (skipAlreadyCollected(machineName, forCollectionData)) {
+    return true;
+  }
+
+  // Check 2: No-Holiday schedule and tomorrow is holiday
+  if (collectionSchedule.includes('No-Holiday') && isTomorrowHoliday) {
+    CustomLogger.logInfo(`Skipping collection for ${machineName}, because the store is closed during holidays.`, CONFIG.APP.NAME, 'shouldExcludeMachineETap');
+    return true;
+  }
+
+  // Check 3: Excluded based on remarks
+  if (forExclusionBasedOnRemarks(lastRemark, todayDateString, machineName)) {
+    CustomLogger.logInfo(`Skipping collection for ${machineName}, because the store has remarks indicating no collection is needed.`, CONFIG.APP.NAME, 'shouldExcludeMachineETap');
+    return true;
+  }
+
+  // Check 4: Requested yesterday
+  if (forExclusionRequestYesterday(previouslyRequestedMachines, machineName, srvBank)) {
+    CustomLogger.logInfo(`Skipping collection for ${machineName}, because the store was requested for collection yesterday.`, CONFIG.APP.NAME, 'shouldExcludeMachineETap');
+    return true;
+  }
+
+    // Check 4: If not yet scheduled for collection
+  if(forExclusionNotYetScheduled(machineName,tomorrowDate,lastRemark)){
+    CustomLogger.logInfo(`Skipping collection for ${machineName}, because the store is not yet scheduled for collection.`, CONFIG.APP.NAME, 'shouldExcludeMachineETap');
+    return true;
+  }
+
+  // Check 5: Business day schedule
+  const translatedBusinessDays = translateDaysToAbbreviation(businessDay.trim());
+
+  if (!shouldIncludeForCollection(machineName, amountValue, translatedBusinessDays, tomorrowDate, tomorrowDateString, todayDate, lastRemark, srvBank)) {
+    CustomLogger.logInfo(`Skipping collection for ${machineName}, because the store is not scheduled for collection on ${tomorrowDateString}.`, CONFIG.APP.NAME, 'shouldExcludeMachineETap');
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Add special machines that must be collected together
+ */
+function addSpecialMachines(eligibleCollections, specialMachinesAdded, amountValue, srvBank, subject) {
+  // If one special machine qualifies, add both (but only once)
+  CONFIG.ETAP.SPECIAL_MACHINES.forEach(specialMachine => {
+    if (!specialMachinesAdded.has(specialMachine)) {
+      eligibleCollections.push([specialMachine, amountValue, srvBank, subject]);
+      specialMachinesAdded.add(specialMachine);
+    }
+  });
+}
+
+/**
+ * Format machine name with remark if it's a revisit
+ */
+function formatMachineNameWithRemarkETap(machineName, lastRemark, tomorrowDateString) {
+  const remarkLower = lastRemark.toLowerCase();
+  const revisitPhrase = `for revisit on ${tomorrowDateString.toLowerCase()}`;
+
+  if (remarkLower.includes(revisitPhrase)) {
+    return `${machineName} (<b>${lastRemark}</b>)`;
+  }
+
+  return machineName;
+}
+
+/**
+ * Process eligible collections
+ */
+function processEligibleCollectionsETap(eligibleCollections, tomorrowDate, emailRecipients) {
+  const srvBank = CONFIG.ETAP.SERVICE_BANK;
+
+  try {
+    // Create hidden worksheet with collection data
+    createHiddenWorksheetAndAddData(eligibleCollections, srvBank);
+
+    // Process and send collections
+    processCollectionsAndSendEmail(eligibleCollections, tomorrowDate, emailRecipients.to, emailRecipients.cc, emailRecipients.bcc, srvBank);
+
+    CustomLogger.logInfo(`Processed ${eligibleCollections.length} eligible collections for ${srvBank}`, CONFIG.APP.NAME, 'processEligibleCollectionsETap');
+
+  } catch (error) {
+    CustomLogger.logError(`Error processing eligible collections: ${error}`, CONFIG.APP.NAME, 'processEligibleCollectionsETap');
+    throw error;
   }
 }

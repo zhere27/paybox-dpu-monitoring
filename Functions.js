@@ -298,25 +298,77 @@ function getKioskPercentage() {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = spreadsheet.getSheetByName("Kiosk %");
 
+  //get the column index of column with the string "Remarks"
+  const remarksColumnIndex = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues().flat().findIndex(col => col === "Remarks") + 1;
+
   const lastRow = sheet.getLastRow();
   const machineNames = sheet.getRange(2, 1, lastRow - 1).getValues();
   const partnerAddress = sheet.getRange(2, 2, lastRow - 1).getValues(); // Column B - Collection Team
   const percentValues = sheet.getRange(2, 16, lastRow - 1).getValues(); // Column P - Current Percentage
   const amountValues = sheet.getRange(2, 17, lastRow - 1).getValues(); // Column Q - Current Cash Amount
-  const lastRequests = sheet.getRange(2, 19, lastRow - 1).getValues(); // Column R - Remarks
+  const lastRequests = sheet.getRange(2, remarksColumnIndex, lastRow - 1).getValues(); // Column R - Remarks
   const collectionSchedules = sheet.getRange(2, 23, lastRow - 1).getValues(); // Column W - Frequency
   const collectionPartners = sheet.getRange(2, 24, lastRow - 1).getValues(); // Column X - Servicing Bank
   const businessDays = sheet.getRange(2, 25, lastRow - 1).getValues(); // Column Y - Business Days
 
+  return [machineNames, percentValues, amountValues, collectionPartners, collectionSchedules, partnerAddress, lastRequests, businessDays,];
+}
+
+function getKioskPercentage(minAmount = 250000) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = spreadsheet.getSheetByName("Kiosk %");
+
+  //get the column index of column with the string "Remarks"
+  const remarksColumnIndex = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues().flat().findIndex(col => col === "Remarks") + 1;
+
+  const lastRow = sheet.getLastRow();
+  const machineNames = sheet.getRange(2, 1, lastRow - 1).getValues();
+  const partnerAddress = sheet.getRange(2, 2, lastRow - 1).getValues(); // Column B - Collection Team
+  const percentValues = sheet.getRange(2, 16, lastRow - 1).getValues(); // Column P - Current Percentage
+  const amountValues = sheet.getRange(2, 17, lastRow - 1).getValues(); // Column Q - Current Cash Amount
+  const lastRequests = sheet.getRange(2, remarksColumnIndex, lastRow - 1).getValues(); // Column R - Remarks
+  const collectionSchedules = sheet.getRange(2, 23, lastRow - 1).getValues(); // Column W - Frequency
+  const collectionPartners = sheet.getRange(2, 24, lastRow - 1).getValues(); // Column X - Servicing Bank
+  const businessDays = sheet.getRange(2, 25, lastRow - 1).getValues(); // Column Y - Business Days
+
+  // Filter arrays based on amount threshold
+  const filteredData = [];
+  for (let i = 0; i < amountValues.length; i++) {
+    if (amountValues[i][0] >= minAmount) {
+      filteredData.push({
+        machineName: machineNames[i],
+        percentValue: percentValues[i],
+        amountValue: amountValues[i],
+        collectionPartner: collectionPartners[i],
+        collectionSchedule: collectionSchedules[i],
+        partnerAddr: partnerAddress[i],
+        lastRequest: lastRequests[i],
+        businessDay: businessDays[i]
+      });
+    }
+  }
+
+  // Separate filtered data back into individual arrays
+  const filtered = {
+    machineNames: filteredData.map(item => item.machineName),
+    percentValues: filteredData.map(item => item.percentValue),
+    amountValues: filteredData.map(item => item.amountValue),
+    collectionPartners: filteredData.map(item => item.collectionPartner),
+    collectionSchedules: filteredData.map(item => item.collectionSchedule),
+    partnerAddress: filteredData.map(item => item.partnerAddr),
+    lastRequests: filteredData.map(item => item.lastRequest),
+    businessDays: filteredData.map(item => item.businessDay)
+  };
+
   return [
-    machineNames,
-    percentValues,
-    amountValues,
-    collectionPartners,
-    collectionSchedules,
-    partnerAddress,
-    lastRequests,
-    businessDays,
+    filtered.machineNames,
+    filtered.percentValues,
+    filtered.amountValues,
+    filtered.collectionPartners,
+    filtered.collectionSchedules,
+    filtered.partnerAddress,
+    filtered.lastRequests,
+    filtered.businessDays
   ];
 }
 
@@ -413,3 +465,121 @@ function translateDaysToAbbreviation(businessDays) {
 
   return abbreviations + "."; // Add trailing dot
 }
+
+
+/**
+ * Protects all sheets in the active Google Spreadsheet that are not already protected.
+ * Skips sheets that already have protection applied.
+ * Applies strict protection (not warning-only).
+ * Optionally, editors can be added to the protection.
+ * Logs each protected sheet using CustomLogger.
+ *
+ * @function
+ * @returns {void}
+ */
+function protectAllSheets() {
+  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  var sheets = spreadsheet.getSheets();
+
+  sheets.forEach(function (sheet) {
+    // Check if the sheet already has a protection
+    var protections = sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET);
+    if (protections.length > 0) {
+      return; // Skip this sheet
+    }
+
+    // Apply protection if none exists
+    var protection = sheet.protect();
+    protection.setWarningOnly(false); // Strict protection
+
+    // Optional: Add editors
+    // protection.addEditor("egalcantara@multisyscorp.com");
+
+    CustomLogger.logInfo("Protected sheet: " + sheet.getName(), PROJECT_NAME, 'protectAllSheets()');
+  });
+}
+
+/**
+ * Hides all sheets in the active spreadsheet starting from the 10th sheet onward.
+ * Logs the action using CustomLogger.
+ *
+ * @function
+ * @returns {void}
+ */
+function hideSheets() {
+  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  var sheets = spreadsheet.getSheets();
+
+  for (var i = 9; i < sheets.length; i++) { // Start hiding from the 10th sheet (index 9)
+    sheets[i].hideSheet();
+  }
+  CustomLogger.logInfo("Hide sheets after Kiosk%", PROJECT_NAME, 'hideSheets()');
+}
+
+/**
+ * Hides columns C to H (columns 3 to 8) in the "Kiosk %" sheet of the active Google Spreadsheet.
+ *
+ * @function
+ * @returns {void}
+ */
+function hideColumnsCtoH() {
+  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = spreadsheet.getSheetByName("Kiosk %");
+  sheet.hideColumns(3, 6); // Start hiding from column C (index 3), for 6 columns (C to H)
+
+}
+
+function lookupLastTwoEntries() {
+  // Define the sheet names
+  const formResponsesSheetName = "Form Responses";
+  const kioskSheetName = "Kiosk %";
+
+  // Define the column indices (adjust if necessary)
+  const machineNameColumnInKiosk = 1; // Assuming Machine Name is in column A of Kiosk %
+  const machineNameColumnInFormResponses = 3; // Assuming Machine Name is in column A of Form Responses
+  const dateColumnInFormResponses = 1; // Assuming Date or Timestamp is in column B of Form Responses
+  const outputColumnInKiosk = 18; // Define where you want to output the concatenated result in Kiosk % (e.g., column B)
+  const dataColumnA = 1; // Column D in Form Responses (4th column)
+  const dataColumnD = 4; // Column D in Form Responses (4th column)
+  const dataColumnE = 5; // Column E in Form Responses (5th column)
+
+  // Get the sheets
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const formResponsesSheet = ss.getSheetByName(formResponsesSheetName);
+  const kioskSheet = ss.getSheetByName(kioskSheetName);
+
+  // Get all machine names from Kiosk %
+  const kioskData = kioskSheet.getRange(2, machineNameColumnInKiosk, kioskSheet.getLastRow() - 1, 1).getValues();
+
+  // Get all data from Form Responses
+  const formResponsesData = formResponsesSheet.getDataRange().getValues();
+
+  // Loop through each machine in Kiosk % and find last two entries in Form Responses
+  kioskData.forEach((row, index) => {
+    const machineName = row[0];
+
+    // Filter entries in Form Responses that match the current machine name
+    const matchingEntries = formResponsesData
+      .filter(entry => entry[machineNameColumnInFormResponses - 1] === machineName)
+      .map(entry => {
+        // Convert entry[dataColumnA - 1] to a Date object and format it as MM/dd
+        const formattedDate = Utilities.formatDate(new Date(entry[dataColumnA - 1]), Session.getScriptTimeZone(), "MM/dd");
+
+        // Concatenate formatted date, columns D and E
+        return {
+          date: new Date(entry[dateColumnInFormResponses - 1]), // For sorting purposes
+          data: formattedDate + " - " + entry[dataColumnD - 1] + " " + entry[dataColumnE - 1]
+        };
+      });
+
+    // Sort the entries by date in descending order (latest date first)
+    matchingEntries.sort((a, b) => b.date - a.date);
+
+    // Get the data for the last two entries after sorting
+    const lastTwoEntries = matchingEntries.slice(0, 2).map(entry => entry.data).join(" | ");
+
+    // Write the result in the output column of Kiosk %
+    kioskSheet.getRange(index + 2, outputColumnInKiosk).setValue(lastTwoEntries);
+  });
+}
+

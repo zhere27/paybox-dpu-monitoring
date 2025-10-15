@@ -39,25 +39,25 @@ const dayIndex = {
  * Amount thresholds for collection by day
  * @type {Object.<string, number>}
  */
-// const amountThresholds = {
-//   'M.': 300000,
-//   'T.': 310000,
-//   'W.': 310000,
-//   'Th.': 300000,
-//   'F.': 290000,
-//   'Sat.': 290000,
-//   'Sun.': 290000
-// };
-
 const amountThresholds = {
-  'M.': 250000,
-  'T.': 250000,
-  'W.': 250000,
-  'Th.': 250000,
-  'F.': 250000,
-  'Sat.': 250000,
-  'Sun.': 250000
+  'M.': 300000,
+  'T.': 310000,
+  'W.': 310000,
+  'Th.': 300000,
+  'F.': 290000,
+  'Sat.': 290000,
+  'Sun.': 290000
 };
+
+// const amountThresholds = {
+//   'M.': 250000,
+//   'T.': 250000,
+//   'W.': 250000,
+//   'Th.': 250000,
+//   'F.': 250000,
+//   'Sat.': 250000,
+//   'Sun.': 250000
+// };
 
 /**
  * Payday ranges for collection
@@ -81,15 +81,15 @@ const dueDateCutoffs = [
  * Amount threshold for payday collections
  * @type {number}
  */
-// const paydayAmount = 290000;
-const paydayAmount = 250000;
+const paydayAmount = 290000;
+// const paydayAmount = 250000;
 
 /**
  * Amount threshold for due date collections
  * @type {number}
  */
-// const dueDateCutoffsAmount = 290000;
-const dueDateCutoffsAmount = 250000;
+const dueDateCutoffsAmount = 290000;
+// const dueDateCutoffsAmount = 250000;
 
 /**
  * Email signature for all emails

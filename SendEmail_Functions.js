@@ -14,6 +14,14 @@ function sendEmailCollection(machineData, collectionDate, emailTo, emailCc, emai
       return;
     }
 
+    // Helper: Sort by machine name (case-insensitive alphabetical)
+    const sortByMachineName = (a, b, index) => {
+      return a[index].toLowerCase().localeCompare(b[index].toLowerCase());
+    };
+
+    // Main logic
+    machineData.sort((a, b) => sortByMachineName(a, b, 0));
+
     const formattedDate = formatDate(collectionDate, "MMMM d, yyyy (EEEE)");
     const subject = `${srvBank} DPU Request - ${formattedDate}`;
 
