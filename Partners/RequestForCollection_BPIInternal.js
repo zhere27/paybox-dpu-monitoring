@@ -1,66 +1,71 @@
-// Configuration constants
-const BPI_INTERNAL_CONFIG = {
-  SERVICE_BANK: 'BPI Internal',
-  ENVIRONMENT: 'production' // Change to 'testing' for testing
-};
-
-// Email recipients by environment
-const BPI_INTERNAL_EMAIL_RECIPIENTS = {
-  production: {
-    to: "mjdagasuhan@bpi.com.ph",
-    cc: "malodriga@bpi.com.ph, julsales@bpi.com.ph, jcslingan@bpi.com.ph, eagmarayag@bpi.com.ph, jmdcantorna@bpi.com.ph, egcameros@bpi.com.ph, jdduque@bpi.com.ph, rdtayag@bpi.com.ph, rsmendoza1@bpi.com.ph, vjdtorcuator@bpi.com.ph, egalcantara@multisyscorp.com, raflorentino@multisyscorp.com, cvcabanilla@multisyscorp.com, gmmrectin@multisyscorp.com, amlaurio@multisyscorp.com",
-    bcc: "mvolbara@pldt.com.ph, RBEspayos@smart.com.ph"
-  },
-  testing: {
-    to: "Erwin Alcantara <egalcantara@multisyscorp.com>",
-    cc: "Erwin Alcantara <egalcantara@multisyscorp.com>",
-    bcc: ""
-  }
-};
-
 function bpiInternalCollectionsLogic() {
-  CustomLogger.logInfo('Running BPI Internal Collections Logic...', PROJECT_NAME, 'bpiInternalCollectionsLogic');
+  CustomLogger.logInfo('Running BPI Internal Collections Logic...', CONFIG.APP.NAME, 'bpiInternalCollectionsLogic');
 
   try {
     // Get date information
     const dateInfo = getTodayAndTomorrowDates();
     let { todayDate, tomorrowDate, todayDateString, tomorrowDateString, isTomorrowHoliday } = dateInfo;
 
-    // Adjust collection date if tomorrow is a holiday
-    if (isTomorrowHoliday) {
-      tomorrowDate = adjustDateForHoliday(tomorrowDate);
-      tomorrowDateString = Utilities.formatDate(tomorrowDate, Session.getScriptTimeZone(), "MMMM d, yyyy");
-      CustomLogger.logInfo(`Tomorrow is a holiday. Collection date adjusted to ${tomorrowDateString}`, PROJECT_NAME, 'bpiInternalCollectionsLogic');
-    }
+    // Adjust collection date to next valid working day (not weekend/holiday)
+    tomorrowDate = adjustToNextWorkingDay(tomorrowDate);
+    tomorrowDateString = Utilities.formatDate(tomorrowDate, Session.getScriptTimeZone(), "MMMM d, yyyy");
+
+    CustomLogger.logInfo(
+      `Collection date adjusted to ${tomorrowDateString}`,
+      CONFIG.APP.NAME,
+      'bpiInternalCollectionsLogic'
+    );
+
+    // // Adjust collection date if tomorrow is a holiday
+    // if (isTomorrowHoliday) {
+    //   tomorrowDate = adjustDateForHoliday(tomorrowDate);
+    //   tomorrowDateString = Utilities.formatDate(tomorrowDate, Session.getScriptTimeZone(), "MMMM d, yyyy");
+    //   CustomLogger.logInfo(`Tomorrow is a holiday. Collection date adjusted to ${tomorrowDateString}`, CONFIG.APP.NAME, 'bpiInternalCollectionsLogic');
+    // }
 
     // Check if adjusted date is weekend
     if (isWeekend(tomorrowDate)) {
-      CustomLogger.logInfo(`Skipping collections - tomorrow date ${tomorrowDateString} falls on weekend.`, PROJECT_NAME, 'bpiInternalCollectionsLogic');
+      CustomLogger.logInfo(`Skipping collections - tomorrow date ${tomorrowDateString} falls on weekend.`, CONFIG.APP.NAME, 'bpiInternalCollectionsLogic');
       return;
     }
 
     // Get email recipients based on environment
-    const emailRecipients = getEmailRecipientsInternal(BPI_INTERNAL_CONFIG.ENVIRONMENT);
+    const emailRecipients = getEmailRecipientsInternal(CONFIG.BPI_INTERNAL.ENVIRONMENT);
 
     // Generate email subject
-    const subject = generateEmailSubjectInternal(tomorrowDate, BPI_INTERNAL_CONFIG.SERVICE_BANK);
+    const subject = generateEmailSubjectInternal(tomorrowDate, CONFIG.BPI_INTERNAL.SERVICE_BANK);
 
     // Get machine data and filter for eligible collections
     const eligibleCollections = getEligibleCollectionsInternal(todayDate, tomorrowDate, todayDateString, tomorrowDateString, subject);
 
     // Process collections if any are eligible (production only)
-    if (BPI_INTERNAL_CONFIG.ENVIRONMENT === 'production' && eligibleCollections.length > 0) {
+    if (CONFIG.BPI_INTERNAL.ENVIRONMENT === 'production' && eligibleCollections.length > 0) {
       processEligibleCollectionsInternal(eligibleCollections, tomorrowDate, emailRecipients);
     } else if (eligibleCollections.length === 0) {
-      CustomLogger.logInfo('No eligible stores for collection tomorrow.', PROJECT_NAME, 'bpiInternalCollectionsLogic');
+      CustomLogger.logInfo('No eligible stores for collection tomorrow.', CONFIG.APP.NAME, 'bpiInternalCollectionsLogic');
     } else {
-      CustomLogger.logInfo(`Testing mode: ${eligibleCollections.length} collections identified but not sent.`, PROJECT_NAME, 'bpiInternalCollectionsLogic');
+      CustomLogger.logInfo(`Testing mode: ${eligibleCollections.length} collections identified but not sent.`, CONFIG.APP.NAME, 'bpiInternalCollectionsLogic');
       console.log(JSON.stringify(collections, null, 2));
     }
+    //Send Logs to Admin
+    EmailSender.sendLogs(CONFIG.APP.ADMIN.email, CONFIG.APP.NAME);
   } catch (error) {
-    CustomLogger.logError(`Error in bpiInternalCollectionsLogic: ${error}`, PROJECT_NAME, 'bpiInternalCollectionsLogic');
+    CustomLogger.logError(`Error in bpiInternalCollectionsLogic: ${error}`, CONFIG.APP.NAME, 'bpiInternalCollectionsLogic');
     throw error;
   }
+}
+
+/**
+ * Returns the next date that is not a weekend or holiday
+ */
+function adjustToNextWorkingDay(date) {
+  let adjustedDate = new Date(date);
+
+  while (isWeekend(adjustedDate) || isHoliday(adjustedDate)) {
+    adjustedDate.setDate(adjustedDate.getDate() + 1);
+  }
+
+  return adjustedDate;
 }
 
 /**
@@ -81,10 +86,33 @@ function isWeekend(date) {
 }
 
 /**
+ * Returns true if the date matches one in the “Holidays” sheet.
+ * Expects holidays in column A, one per row, in any date format.
+ */
+function isHoliday(date) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("StoreName Mapping");
+  if (!sheet) return false;
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 1) return false;
+
+  const holidayValues = sheet.getRange(3, 7, lastRow).getValues(); // Column A
+  const formattedDate = Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+
+  // Convert sheet values to comparable string format
+  return holidayValues.some(row => {
+    const holiday = row[0];
+    if (!holiday) return false;
+    const holidayStr = Utilities.formatDate(new Date(holiday), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    return holidayStr === formattedDate;
+  });
+}
+
+/**
  * Get email recipients based on environment
  */
 function getEmailRecipientsInternal(environment) {
-  return BPI_INTERNAL_EMAIL_RECIPIENTS[environment] || BPI_INTERNAL_EMAIL_RECIPIENTS.testing;
+  return CONFIG.BPI_INTERNAL.EMAIL_RECIPIENTS[environment] || CONFIG.BPI_INTERNAL.EMAIL_RECIPIENTS.testing;
 }
 
 /**
@@ -103,7 +131,7 @@ function generateEmailSubjectInternal(tomorrowDate, serviceBank) {
  * Get eligible collections based on criteria
  */
 function getEligibleCollectionsInternal(todayDate, tomorrowDate, todayDateString, tomorrowDateString, subject) {
-  const srvBank = BPI_INTERNAL_CONFIG.SERVICE_BANK;
+  const srvBank = CONFIG.BPI_INTERNAL.SERVICE_BANK;
 
   // Fetch data
   const machineData = getMachineDataByPartner(srvBank);
@@ -111,16 +139,7 @@ function getEligibleCollectionsInternal(todayDate, tomorrowDate, todayDateString
   const previouslyRequestedMachines = getPreviouslyRequestedMachineNamesByServiceBank(srvBank);
 
   // Destructure machine data
-  const [
-    machineNames,
-    percentValues,
-    amountValues,
-    collectionPartners,
-    collectionSchedules,
-    ,
-    lastRemarks,
-    businessDays
-  ] = machineData;
+  const [machineNames, percentValues, amountValues, collectionPartners, collectionSchedules, , lastRemarks, businessDays] = machineData;
 
   // Filter eligible collections
   const eligibleCollections = [];
@@ -132,7 +151,7 @@ function getEligibleCollectionsInternal(todayDate, tomorrowDate, todayDateString
     const businessDay = businessDays[i][0];
 
     // Apply exclusion filters
-    if (shouldExcludeMachineInternal(machineName, amountValue, lastRemark, businessDay, forCollectionData, previouslyRequestedMachines, todayDate, tomorrowDate, todayDateString, tomorrowDateString, srvBank)) {
+    if (excludeMachineBpiInternal(machineName, amountValue, lastRemark, businessDay, forCollectionData, previouslyRequestedMachines, todayDate, tomorrowDate, todayDateString, tomorrowDateString, srvBank)) {
       return; // Skip this machine
     }
 
@@ -146,9 +165,27 @@ function getEligibleCollectionsInternal(todayDate, tomorrowDate, todayDateString
 /**
  * Determine if machine should be excluded from collection
  */
-function shouldExcludeMachineInternal(machineName, amountValue, lastRemark, businessDay, forCollectionData, previouslyRequestedMachines, todayDate, tomorrowDate, todayDateString, tomorrowDateString, srvBank) {  // Check 1: Skip weekend collections
+function excludeMachineBpiInternal(machineName, amountValue, lastRemark, businessDay, forCollectionData, previouslyRequestedMachines, todayDate, tomorrowDate, todayDateString, tomorrowDateString, srvBank) {  // Check 1: Skip weekend collections
+  const collectionDay = dayMapping[tomorrowDate.getDay()];
+
+  if (hasSpecialCollectionConditions(lastRemark, tomorrowDateString)) {
+    return false;
+  }
+
+  // Check: Excluded stores
+  if (isExcludedStore(machineName)) {
+    CustomLogger.logInfo(`Skipping collection for ${machineName}, because the store is on the exclusion list.`, CONFIG.APP.NAME, 'excludeMachineETap');
+    return true;
+  }
+
+  // Check: Exclude if amount did not meet
+  if (!meetsAmountThreshold(amountValue, collectionDay, srvBank)) {
+    CustomLogger.logInfo(`Skipping collection for ${machineName}, because the amount did not meet amount threshold.`, CONFIG.APP.NAME, 'excludeMachineETap');
+    return true;
+  }
+
   if (skipWeekendCollections(srvBank, tomorrowDate)) {
-    CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, during weekends.`, PROJECT_NAME, 'shouldExcludeMachineInternal');
+    CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, during weekends.`, CONFIG.APP.NAME, 'shouldExcludeMachineInternal');
     return true;
   }
 
@@ -181,10 +218,10 @@ function shouldExcludeMachineInternal(machineName, amountValue, lastRemark, busi
  * Process eligible collections
  */
 function processEligibleCollectionsInternal(eligibleCollections, tomorrowDate, emailRecipients) {
-  const srvBank = BPI_INTERNAL_CONFIG.SERVICE_BANK;
+  const srvBank = CONFIG.BPI_INTERNAL.SERVICE_BANK;
 
   try {
-    if (CONFIG_BPI.ENVIRONMENT === "production") {
+    if (CONFIG.BPI_INTERNAL.ENVIRONMENT === "production") {
       // Create hidden worksheet with collection data
       createHiddenWorksheetAndAddData(eligibleCollections, srvBank);
 
@@ -193,20 +230,22 @@ function processEligibleCollectionsInternal(eligibleCollections, tomorrowDate, e
 
       // Process and send collections
       processCollectionsAndSendEmail(eligibleCollections, tomorrowDate, emailRecipients.to, emailRecipients.cc, emailRecipients.bcc, srvBank);
-      CustomLogger.logInfo(`Processed ${eligibleCollections.length} eligible collections for ${srvBank}`, PROJECT_NAME, 'processEligibleCollectionsInternal');
+      CustomLogger.logInfo(`Processed ${eligibleCollections.length} eligible collections for ${srvBank}`, CONFIG.APP.NAME, 'processEligibleCollectionsInternal');
+    } else if (eligibleCollections.length === 0) {
+      CustomLogger.logInfo('No eligible stores for collection tomorrow.', CONFIG.APP.NAME, 'processEligibleCollectionsInternal');
     } else {
-      // Process and send collections
-      processCollectionsAndSendEmail(eligibleCollections, tomorrowDate, emailRecipients.to, emailRecipients.cc, emailRecipients.bcc, srvBank);
-      CustomLogger.logInfo(`[TESTING MODE] Found ${eligibleCollections.length} eligible collections. No emails will be sent.`, PROJECT_NAME, "processEligibleCollectionsBPI()");
+      CustomLogger.logInfo(`[TESTING MODE] Found ${collections.length} eligible collections. No emails will be sent.`, CONFIG.APP.NAME, "processEligibleCollectionsInternal");
+      // Optional: Log the collections for verification during testing
+      console.log(JSON.stringify(collections, null, 2));
     }
   } catch (error) {
-    CustomLogger.logError(`Error processing eligible collections: ${error}`, PROJECT_NAME, 'processEligibleCollectionsInternal');
+    CustomLogger.logError(`Error processing eligible collections: ${error}`, CONFIG.APP.NAME, 'processEligibleCollectionsInternal');
     throw error;
   }
 }
 
 // function bpiInternalCollectionsLogic() {
-//   CustomLogger.logInfo("Running BPI Internal Collections Logic...", PROJECT_NAME, "bpiInternalCollectionsLogic()");
+//   CustomLogger.logInfo("Running BPI Internal Collections Logic...", CONFIG.APP.NAME, "bpiInternalCollectionsLogic()");
 //   const environment = "production";
 //   const srvBank = "BPI Internal";
 //   const { todayDate, tomorrowDate, todayDateString, tomorrowDateString, isTomorrowHoliday } = getTodayAndTomorrowDates();
@@ -250,7 +289,7 @@ function processEligibleCollectionsInternal(eligibleCollections, tomorrowDate, e
 
 //     // Skip weekends
 //     if (skipWeekendCollections(srvBank, tomorrowDate)) {
-//       CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, during weekends.`, PROJECT_NAME, "bpiInternalCollectionsLogic()");
+//       CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, during weekends.`, CONFIG.APP.NAME, "bpiInternalCollectionsLogic()");
 //       return false;
 //     }
 
@@ -280,7 +319,7 @@ function processEligibleCollectionsInternal(eligibleCollections, tomorrowDate, e
 //     createHiddenWorksheetAndAddData(forCollections, srvBank);
 //     processCollections(forCollections, tomorrowDate, emailRecipients.to, emailRecipients.cc, emailRecipients.bcc, srvBank);
 //   } else {
-//     CustomLogger.logInfo("No eligible stores for collection tomorrow.", PROJECT_NAME, "bpiInternalCollectionsLogic()");
+//     CustomLogger.logInfo("No eligible stores for collection tomorrow.", CONFIG.APP.NAME, "bpiInternalCollectionsLogic()");
 //   }
 // }
 

@@ -66,7 +66,7 @@ function shouldSkipExecution(todayDate) {
 
   if (day === 0 || day === 6) {
     // 0-Sunday, 6-Saturday
-    CustomLogger.logInfo("Skipping execution on weekends.", PROJECT_NAME, "shouldSkipExecution()");
+    CustomLogger.logInfo("Skipping execution on weekends.", CONFIG.APP.NAME, "shouldSkipExecution()");
     return true;
   }
   return false;
@@ -74,61 +74,7 @@ function shouldSkipExecution(todayDate) {
 
 // === Collection Processing Functions === //
 
-/**
- * Processes collections and sends emails
- * @param {Array} forCollections - Array of collections to process
- * @param {Date} tomorrowDate - Tomorrow's date
- * @param {string} emailTo - Email recipients (to)
- * @param {string} emailCc - Email recipients (cc)
- * @param {string} emailBcc - Email recipients (bcc)
- * @param {string} srvBank - Service bank
- */
-function processCollectionsAndSendEmail(forCollections, tomorrowDate, emailTo, emailCc, emailBcc, srvBank) {
-  try {
-    if (!forCollections || forCollections.length === 0) {
-      CustomLogger.logInfo("No collections to process.", PROJECT_NAME, "processCollections()");
-      return;
-    }
 
-    const collectionDate = new Date(tomorrowDate);
-
-    // Helper: Sort by numeric value (desc), pushing NaN to the end
-    const sortByAmountDescNaNLast = (a, b, index) => {
-      const aAmount = Number(a[index]);
-      const bAmount = Number(b[index]);
-
-      if (Number.isNaN(aAmount) && Number.isNaN(bAmount)) return 0;
-      if (Number.isNaN(aAmount)) return 1;
-      if (Number.isNaN(bAmount)) return -1;
-
-      return bAmount - aAmount; // Descending
-    };
-
-    // Helper: Sort by string (case-sensitive) at given index
-    const sortByString = (a, b, index) => a[index].localeCompare(b[index]);
-
-    // Main logic
-    forCollections.sort(srvBank === "Brinks via BPI" ? (a, b) => sortByAmountDescNaNLast(a, b, 2) : (a, b) => sortByString(a, b, 0));
-
-    // Saturday collection limit is only applicable to Brinks via BPI
-    if (collectionDate.getDay() === 6 && srvBank === "Brinks via BPI") {
-      // 6-Saturday
-      if (forCollections.length > 4) {
-        const collectionsForMonday = forCollections.slice(4);
-        const collectionDateForMonday = getNextMonday();
-        // collectionDateForMonday.setDate(collectionDateForMonday.getDate() + 3);
-        sendEmailCollection(collectionsForMonday, collectionDateForMonday, emailTo, emailCc, emailBcc, srvBank);
-      }
-
-      sendEmailCollection(forCollections.slice(0, 4), collectionDate, emailTo, emailCc, emailBcc, srvBank);
-    } else {
-      sendEmailCollection(forCollections, collectionDate, emailTo, emailCc, emailBcc, srvBank);
-    }
-  } catch (error) {
-    CustomLogger.logError(`Error in processCollections(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, "processCollections()");
-    throw error;
-  }
-}
 
 // === Spreadsheet Functions === //
 
@@ -151,7 +97,7 @@ function addMachineToAdvanceNotice(machineName) {
 function createHiddenWorksheetAndAddData(forCollections, srvBank) {
   try {
     if (!forCollections || forCollections.length === 0) {
-      CustomLogger.logInfo("No collection data to add to worksheet.", PROJECT_NAME, "createHiddenWorksheetAndAddData()");
+      CustomLogger.logInfo("No collection data to add to worksheet.", CONFIG.APP.NAME, "createHiddenWorksheetAndAddData()");
       return;
     }
 
@@ -185,9 +131,9 @@ function createHiddenWorksheetAndAddData(forCollections, srvBank) {
     // Adjust column A width for better readability
     sheet.autoResizeColumn(1);
 
-    CustomLogger.logInfo(`Updated for collection worksheet "${sheetName}" with ${numRows} rows.`, PROJECT_NAME, "createHiddenWorksheetAndAddData()");
+    CustomLogger.logInfo(`Updated for collection worksheet "${sheetName}" with ${numRows} rows.`, CONFIG.APP.NAME, "createHiddenWorksheetAndAddData()");
   } catch (error) {
-    CustomLogger.logError(`Error in createHiddenWorksheetAndAddData(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, "createHiddenWorksheetAndAddData()");
+    CustomLogger.logError(`Error in createHiddenWorksheetAndAddData(): ${error.message}\nStack: ${error.stack}`, CONFIG.APP.NAME, "createHiddenWorksheetAndAddData()");
     throw error;
   }
 }
@@ -195,7 +141,7 @@ function createHiddenWorksheetAndAddData(forCollections, srvBank) {
 function excludeAlreadyCollected(machineName, forCollectionData) {
   try {
     if (!forCollectionData || forCollectionData.length === 0) {
-      CustomLogger.logInfo("No collection data worksheet.", PROJECT_NAME, "excludeAlreadyCollected()");
+      CustomLogger.logInfo("No collection data worksheet.", CONFIG.APP.NAME, "excludeAlreadyCollected()");
       return;
     }
 
@@ -208,13 +154,13 @@ function excludeAlreadyCollected(machineName, forCollectionData) {
     }
 
     if (result) {
-      CustomLogger.logInfo(`Skipping collection for ${machineName}, it is already collected. `, PROJECT_NAME, "excludeAlreadyCollected()");
+      CustomLogger.logInfo(`Skipping collection for ${machineName}, it is already collected. `, CONFIG.APP.NAME, "excludeAlreadyCollected()");
       return result;
     }
 
     return;
   } catch (error) {
-    CustomLogger.logError(`Error in excludeAlreadyCollected(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, "excludeAlreadyCollected()");
+    CustomLogger.logError(`Error in excludeAlreadyCollected(): ${error.message}\nStack: ${error.stack}`, CONFIG.APP.NAME, "excludeAlreadyCollected()");
     throw error;
   }
 }
@@ -232,7 +178,7 @@ function getForCollections(srvBank) {
   const sheet = spreadsheet.getSheetByName(sheetName);
 
   if (!sheet) {
-    CustomLogger.logInfo(`Sheet "${sheetName}" not found for reference of recently collected machines.`, PROJECT_NAME, "getForCollections()");
+    CustomLogger.logInfo(`Sheet "${sheetName}" not found for reference of recently collected machines.`, CONFIG.APP.NAME, "getForCollections()");
     throw new Error(`Sheet named "${sheetName}" not found.`);
   }
 
@@ -266,19 +212,19 @@ function shouldIncludeForCollection(machineName, amountValue, translatedBusiness
 
     // 1. Check if excluded store
     if (isExcludedStore(machineName)) {
-      CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, part of the excluded stores.`, PROJECT_NAME, "shouldIncludeForCollection()");
+      CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, part of the excluded stores.`, CONFIG.APP.NAME, "shouldIncludeForCollection()");
       return false;
     }
 
     // 2. Check business days
     if (!translatedBusinessDays.includes(collectionDay)) {
-      CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, not a collection day.`, PROJECT_NAME, "shouldIncludeForCollection()");
+      CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, not a collection day.`, CONFIG.APP.NAME, "shouldIncludeForCollection()");
       return false;
     }
 
     // 3. Check weekend restrictions
     if (skipWeekendCollections(srvBank, tomorrowDate)) {
-      CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, during weekends.`, PROJECT_NAME, "shouldIncludeForCollection()");
+      CustomLogger.logInfo(`Skipping collection for ${machineName} on ${tomorrowDateString}, during weekends.`, CONFIG.APP.NAME, "shouldIncludeForCollection()");
       return false;
     }
 
@@ -314,7 +260,7 @@ function shouldIncludeForCollection(machineName, amountValue, translatedBusiness
     // Default: no collection needed
     return false;
   } catch (error) {
-    CustomLogger.logError(`Error in shouldIncludeForCollection(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, "shouldIncludeForCollection()");
+    CustomLogger.logError(`Error in shouldIncludeForCollection(): ${error.message}\nStack: ${error.stack}`, CONFIG.APP.NAME, "shouldIncludeForCollection()");
     return false;
   }
 }
@@ -356,12 +302,12 @@ function excluceBasedOnRemarks(lastRequest, todayDay, machineName = null) {
 
     // Log exclusion if machine name provided and excluded
     if (isExcluded && machineName) {
-      CustomLogger.logInfo(`Skipping collection for machine ${machineName}, last remarks is "${lastRequest}".`, PROJECT_NAME, "excluceBasedOnRemarks()");
+      CustomLogger.logInfo(`Skipping collection for machine ${machineName}, last remarks is "${lastRequest}".`, CONFIG.APP.NAME, "excluceBasedOnRemarks()");
     }
 
     return isExcluded;
   } catch (error) {
-    CustomLogger.logError(`Error in shouldExcludeFromCollection(): ${error.message}`, PROJECT_NAME, "excluceBasedOnRemarks()");
+    CustomLogger.logError(`Error in shouldExcludeFromCollection(): ${error.message}`, CONFIG.APP.NAME, "excluceBasedOnRemarks()");
     return false; // Fail-safe: don't exclude on error
   }
 }
@@ -467,7 +413,7 @@ function excludeRequestedYesterday(previouslyRequestedMachines, machineName, srv
   const isExcluded = previouslyRequestedMachines.includes(machineName);
 
   if (isExcluded) {
-    CustomLogger.logInfo(`Skipping collection for machine: ${machineName}, requested for collection yesterday.`, PROJECT_NAME, "excludeRequestedYesterday()");
+    CustomLogger.logInfo(`Skipping collection for machine: ${machineName}, requested for collection yesterday.`, CONFIG.APP.NAME, "excludeRequestedYesterday()");
   }
 
   return isExcluded;
@@ -479,7 +425,7 @@ function getPreviouslyRequestedMachineNamesByServiceBank(srvBank) {
 
   //validate srvBank if null or blank
   if (srvBank == null || srvBank == "") {
-    CustomLogger.logInfo(`Service bank not found for reference of recently collected machines.`, PROJECT_NAME, "getPreviouslyRequestedMachineNamesByServiceBank()");
+    CustomLogger.logInfo(`Service bank not found for reference of recently collected machines.`, CONFIG.APP.NAME, "getPreviouslyRequestedMachineNamesByServiceBank()");
     return machineNames;
   }
 
@@ -489,7 +435,7 @@ function getPreviouslyRequestedMachineNamesByServiceBank(srvBank) {
   const sheet = spreadsheet.getSheetByName(sheetName);
 
   if (!sheet) {
-    CustomLogger.logInfo(`Sheet "${sheetName}" not found for reference of recently collected machines.`, PROJECT_NAME, "getPreviouslyRequestedMachineNamesByServiceBank()");
+    CustomLogger.logInfo(`Sheet "${sheetName}" not found for reference of recently collected machines.`, CONFIG.APP.NAME, "getPreviouslyRequestedMachineNamesByServiceBank()");
     return machineNames;
   }
 
@@ -558,7 +504,7 @@ function isTomorrowHoliday(tomorrow) {
 
     return false;
   } catch (error) {
-    CustomLogger.logError(`Error in isTomorrowHoliday(): ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, "isTomorrowHoliday()");
+    CustomLogger.logError(`Error in isTomorrowHoliday(): ${error.message}\nStack: ${error.stack}`, CONFIG.APP.NAME, "isTomorrowHoliday()");
     return false;
   }
 }
@@ -620,7 +566,7 @@ function skipFunction() {
 
   // Check if the current UTC timestamp is within the predefined range.
   if (nowUTC >= startDateUTC && nowUTC <= endDateUTC) {
-    CustomLogger.logInfo("Function execution skipped due to date restriction.", PROJECT_NAME, "skipFunction()");
+    CustomLogger.logInfo("Function execution skipped due to date restriction.", CONFIG.APP.NAME, "skipFunction()");
     return; // Skip execution if within the restricted time range.
   }
 }
@@ -662,7 +608,7 @@ function isExcludedStore(machineName) {
  * @returns {boolean} - True if should skip weekend collection
  */
 function skipWeekendCollections(srvBank, date) {
-  const dpuPartners = ["BPI", "BPI Internal"];
+  const dpuPartners = ["BPI Internal"];
   const weekendDays = [dayIndex["Sat."], dayIndex["Sun."]];
 
   return dpuPartners.includes(srvBank) && weekendDays.includes(date.getDay());

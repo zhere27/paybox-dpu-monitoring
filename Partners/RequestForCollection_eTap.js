@@ -24,7 +24,8 @@ function eTapCollectionsLogic() {
       CustomLogger.logInfo(`Testing mode: ${eligibleCollections.length} collections identified but not sent.`, CONFIG.APP.NAME, 'eTapCollectionsLogic');
       console.log(JSON.stringify(eligibleCollections, null, 2));
     }
-
+    //Send Logs to Admin
+    EmailSender.sendLogs(CONFIG.APP.ADMIN.email, CONFIG.APP.NAME);
   } catch (error) {
     CustomLogger.logError(`Error in eTapCollectionsLogic: ${error.message}\nStack: ${error.stack}`, CONFIG.APP.NAME, 'eTapCollectionsLogic');
     throw error;
@@ -114,7 +115,7 @@ function excludeMachineETap(machineName, amountValue, collectionSchedule, lastRe
   }
 
   // Check 1: Already collected
-  if (excludeAlreadyCollected(machineName, forCshouldSkipWeekendCollectionsollectionData)) {
+  if (excludeAlreadyCollected(machineName, forCollectionData)) {
     CustomLogger.logInfo(`Skipping collection for ${machineName}, because the store was already collected.`, CONFIG.APP.NAME, 'excludeMachineETap');
     return true;
   }

@@ -1,3 +1,4 @@
+
 function executeQueryAndWait(query) {
   const projectId = "ms-paybox-prod-1";
   const request = {
@@ -101,32 +102,6 @@ function getLastHourly() {
   } catch (error) {
     throw new Error(
       ("Failed to get last hourly data: " + error.message) &
-      ("\nStack Trace: " + error.stack)
-    );
-  }
-}
-
-function getStoreList() {
-  try {
-    const query = `
-SELECT machine_name
-FROM \`ms-paybox-prod-1.pldtsmart.machines\`
-WHERE status = TRUE AND NOT machine_name IN ('Multisys Paybox Live','Test Kiosk - Paymaya VAPT','Kiosk Machine - Test','PLDT LAOAG 2')
-  `;
-
-    Logger.log(query);
-
-    const queryResults = executeQueryAndWait(query);
-    const rows = queryResults.rows;
-
-    if (!rows || rows.length === 0) {
-      throw new Error("No data found");
-    }
-
-    return rows;
-  } catch (error) {
-    throw new Error(
-      ("Failed to retrieve store list:" + error.message) &
       ("\nStack Trace: " + error.stack)
     );
   }
@@ -373,41 +348,41 @@ function getKioskPercentage(minAmount = 250000) {
 }
 
 function getMachineDataByPartner(srvBank = null) {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = spreadsheet.getSheetByName("Kiosk %");
-
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Kiosk %");
   const lastRow = sheet.getLastRow();
-  const machineNames = sheet.getRange(2, 1, lastRow - 1).getValues(); // Column A
-  const partnerAddress = sheet.getRange(2, 2, lastRow - 1).getValues(); // Column B
-  const percentValues = sheet.getRange(2, 16, lastRow - 1).getValues(); // Column P
-  const amountValues = sheet.getRange(2, 17, lastRow - 1).getValues(); // Column Q
-  const lastRemarks = sheet.getRange(2, 18, lastRow - 1).getValues(); // Column R
-  const collectionSchedules = sheet.getRange(2, 23, lastRow - 1).getValues(); // Column W
-  const collectionPartners = sheet.getRange(2, 24, lastRow - 1).getValues(); // Column X
-  const businessDays = sheet.getRange(2, 25, lastRow - 1).getValues(); // Column Y
 
-  // Apply filter where collectionPartners (Column X) == 'eTap'
-  const filteredData = collectionPartners
+  // Read data from columns A–Y (starting at row 2)
+  const machineNames = sheet.getRange(2, 1, lastRow - 1).getValues(); // A
+  const partnerAddress = sheet.getRange(2, 2, lastRow - 1).getValues(); // B
+  const percentValues = sheet.getRange(2, 16, lastRow - 1).getValues(); // P
+  const amountValues = sheet.getRange(2, 17, lastRow - 1).getValues(); // Q
+  const lastRemarks = sheet.getRange(2, 18, lastRow - 1).getValues(); // R
+  const collectionSchedules = sheet.getRange(2, 23, lastRow - 1).getValues(); // W
+  const collectionPartners = sheet.getRange(2, 24, lastRow - 1).getValues(); // X
+  const businessDays = sheet.getRange(2, 25, lastRow - 1).getValues(); // Y
+
+  // Filter rows where partner matches srvBank (if provided) AND amount >= 300000
+  const filteredIndices = collectionPartners
     .map((partner, index) => ({
       index,
       partner: partner[0],
+      amount: amountValues[index][0],
     }))
-    .filter(item => srvBank == null || item.partner === srvBank)
+    .filter(item =>
+      (srvBank == null || item.partner === srvBank) &&
+      item.amount >= 300000
+    )
     .map(item => item.index);
 
-  // Map each field according to the filtered indices
-  const filteredMachineNames = filteredData.map((i) => machineNames[i]);
-  const filteredPercentValues = filteredData.map((i) => percentValues[i]);
-  const filteredAmountValues = filteredData.map((i) => amountValues[i]);
-  const filteredCollectionPartners = filteredData.map(
-    (i) => collectionPartners[i]
-  );
-  const filteredCollectionSchedules = filteredData.map(
-    (i) => collectionSchedules[i]
-  );
-  const filteredPartnerAddress = filteredData.map((i) => partnerAddress[i]);
-  const filteredLastRemarks = filteredData.map((i) => lastRemarks[i]);
-  const filteredBusinessDays = filteredData.map((i) => businessDays[i]);
+  // Map filtered rows from all columns
+  const filteredMachineNames = filteredIndices.map(i => machineNames[i]);
+  const filteredPercentValues = filteredIndices.map(i => percentValues[i]);
+  const filteredAmountValues = filteredIndices.map(i => amountValues[i]);
+  const filteredCollectionPartners = filteredIndices.map(i => collectionPartners[i]);
+  const filteredCollectionSchedules = filteredIndices.map(i => collectionSchedules[i]);
+  const filteredPartnerAddress = filteredIndices.map(i => partnerAddress[i]);
+  const filteredLastRemarks = filteredIndices.map(i => lastRemarks[i]);
+  const filteredBusinessDays = filteredIndices.map(i => businessDays[i]);
 
   return [
     filteredMachineNames,
@@ -420,6 +395,58 @@ function getMachineDataByPartner(srvBank = null) {
     filteredBusinessDays,
   ];
 }
+
+function getMachineDataByPartner(srvBank = null, tomorrowDate) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Kiosk %");
+  const lastRow = sheet.getLastRow();
+  const collectionDay = dayMapping[tomorrowDate.getDay()];
+  const amountThreashold = amountThresholds[collectionDay];
+
+  // Read data from columns A–Y (starting at row 2)
+  const machineNames = sheet.getRange(2, 1, lastRow - 1).getValues(); // A
+  const partnerAddress = sheet.getRange(2, 2, lastRow - 1).getValues(); // B
+  const percentValues = sheet.getRange(2, 16, lastRow - 1).getValues(); // P
+  const amountValues = sheet.getRange(2, 17, lastRow - 1).getValues(); // Q
+  const lastRemarks = sheet.getRange(2, 18, lastRow - 1).getValues(); // R
+  const collectionSchedules = sheet.getRange(2, 23, lastRow - 1).getValues(); // W
+  const collectionPartners = sheet.getRange(2, 24, lastRow - 1).getValues(); // X
+  const businessDays = sheet.getRange(2, 25, lastRow - 1).getValues(); // Y
+
+  // Filter rows where partner matches srvBank (if provided) AND amount >= 300000
+  const filteredIndices = collectionPartners
+    .map((partner, index) => ({
+      index,
+      partner: partner[0],
+      amount: amountValues[index][0],
+    }))
+    .filter(item =>
+      (srvBank == null || item.partner === srvBank) &&
+      item.amount >= amountThreashold
+    )
+    .map(item => item.index);
+
+  // Map filtered rows from all columns
+  const filteredMachineNames = filteredIndices.map(i => machineNames[i]);
+  const filteredPercentValues = filteredIndices.map(i => percentValues[i]);
+  const filteredAmountValues = filteredIndices.map(i => amountValues[i]);
+  const filteredCollectionPartners = filteredIndices.map(i => collectionPartners[i]);
+  const filteredCollectionSchedules = filteredIndices.map(i => collectionSchedules[i]);
+  const filteredPartnerAddress = filteredIndices.map(i => partnerAddress[i]);
+  const filteredLastRemarks = filteredIndices.map(i => lastRemarks[i]);
+  const filteredBusinessDays = filteredIndices.map(i => businessDays[i]);
+
+  return [
+    filteredMachineNames,
+    filteredPercentValues,
+    filteredAmountValues,
+    filteredCollectionPartners,
+    filteredCollectionSchedules,
+    filteredPartnerAddress,
+    filteredLastRemarks,
+    filteredBusinessDays,
+  ];
+}
+
 
 function translateDaysToAbbreviation(businessDays) {
   //const businessDays = "Monday - Friday";
@@ -495,7 +522,7 @@ function protectAllSheets() {
     // Optional: Add editors
     // protection.addEditor("egalcantara@multisyscorp.com");
 
-    CustomLogger.logInfo("Protected sheet: " + sheet.getName(), PROJECT_NAME, 'protectAllSheets()');
+    CustomLogger.logInfo("Protected sheet: " + sheet.getName(), CONFIG.APP.NAME, 'protectAllSheets()');
   });
 }
 
@@ -513,7 +540,7 @@ function hideSheets() {
   for (var i = 9; i < sheets.length; i++) { // Start hiding from the 10th sheet (index 9)
     sheets[i].hideSheet();
   }
-  CustomLogger.logInfo("Hide sheets after Kiosk%", PROJECT_NAME, 'hideSheets()');
+  CustomLogger.logInfo("Hide sheets after Kiosk%", CONFIG.APP.NAME, 'hideSheets()');
 }
 
 /**

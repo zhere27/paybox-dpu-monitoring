@@ -62,13 +62,13 @@ function shouldExcludeFromCollection_stg(lastRequest, todayDay, machineName = nu
 
     // Log exclusion if machine name provided and excluded
     if (isExcluded && machineName) {
-      CustomLogger.logInfo(`Machine "${machineName}" excluded - Last remarks: "${lastRequest}"`,PROJECT_NAME,'shouldExcludeFromCollection');
+      CustomLogger.logInfo(`Machine "${machineName}" excluded - Last remarks: "${lastRequest}"`,CONFIG.APP.NAME,'shouldExcludeFromCollection');
     }
 
     return isExcluded;
 
   } catch (error) {
-    CustomLogger.logError(`Error in shouldExcludeFromCollection(): ${error.message}`,PROJECT_NAME,'shouldExcludeFromCollection');
+    CustomLogger.logError(`Error in shouldExcludeFromCollection(): ${error.message}`,CONFIG.APP.NAME,'shouldExcludeFromCollection');
     return false; // Fail-safe: don't exclude on error
   }
 }

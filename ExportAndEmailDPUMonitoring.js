@@ -1,5 +1,5 @@
 function exportSheetAndSendEmail() {
-  CustomLogger.logInfo("Running sending DPU monitoring...", PROJECT_NAME, 'exportSheetAndSendEmail()');
+  CustomLogger.logInfo("Running sending DPU monitoring...", CONFIG.APP.NAME, 'exportSheetAndSendEmail()');
 
   var retries = 3;
   var sheetName = "For Sending";
@@ -13,14 +13,14 @@ function exportSheetAndSendEmail() {
 
   var day = new Date().getDay();
   if (day === 0 || day === 6) { // 0 = Sunday, 6 = Saturday
-    CustomLogger.logInfo("Today is a weekend. Exiting script.", PROJECT_NAME, 'exportSheetAndSendEmail()');
+    CustomLogger.logInfo("Today is a weekend. Exiting script.", CONFIG.APP.NAME, 'exportSheetAndSendEmail()');
     return; // Exit the function if today is a weekend
   }
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(sheetName);
   if (!sheet) {
-    CustomLogger.logError(`Sheet "${sheetName}" not found.`, PROJECT_NAME, 'exportSheetAndSendEmail'); // Log error message to the log
+    CustomLogger.logError(`Sheet "${sheetName}" not found.`, CONFIG.APP.NAME, 'exportSheetAndSendEmail'); // Log error message to the log
     return;
   }
 
@@ -60,18 +60,18 @@ function exportSheetAndSendEmail() {
 
       sheet.hideSheet();
 
-      CustomLogger.logInfo("Email sent successfully.", PROJECT_NAME, 'exportSheetAndSendEmail()');
+      CustomLogger.logInfo("Email sent successfully.", CONFIG.APP.NAME, 'exportSheetAndSendEmail()');
       return; // Exit loop on success
 
     } catch (e) {
-      CustomLogger.logError("Attempt " + (4 - retries) + " failed: " + e.message, 'exportSheetAndSendEmail', PROJECT_NAME, exportSheetAndSendEmail);
+      CustomLogger.logError("Attempt " + (4 - retries) + " failed: " + e.message, 'exportSheetAndSendEmail', CONFIG.APP.NAME, exportSheetAndSendEmail);
     }
 
     retries--;
     if (retries > 0) {
-      CustomLogger.logInfo("Retrying in 5 seconds...", PROJECT_NAME, 'exportSheetAndSendEmail()');
+      CustomLogger.logInfo("Retrying in 5 seconds...", CONFIG.APP.NAME, 'exportSheetAndSendEmail()');
       Utilities.sleep(5000); // Wait 5 seconds before retrying
     }
   }
-  CustomLogger.logError("All attempts to send the email have failed.", PROJECT_NAME, 'exportSheetAndSendEmail()');
+  CustomLogger.logError("All attempts to send the email have failed.", CONFIG.APP.NAME, 'exportSheetAndSendEmail()');
 }

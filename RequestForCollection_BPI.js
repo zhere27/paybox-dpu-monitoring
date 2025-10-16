@@ -43,7 +43,7 @@ function bpiCollectionsLogic() {
     const businessDay = businessDays[i][0];
 
     // Skip if the last request should be excluded
-    if (forExclusionBasedOnRemarks(lastRemark, todayDateString, machineName)) {
+    if (excluceBasedOnRemarks(lastRemark, todayDateString, machineName)) {
       return;
     }
 

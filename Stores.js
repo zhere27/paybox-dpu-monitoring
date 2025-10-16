@@ -31,4 +31,31 @@ function refreshStores() {
   }
 
   sortLatestPercentage();
+
+
+  function getStoreList() {
+    try {
+      const query = `
+SELECT machine_name
+FROM \`ms-paybox-prod-1.pldtsmart.machines\`
+WHERE status = TRUE AND NOT machine_name IN ('Multisys Paybox Live','Test Kiosk - Paymaya VAPT','Kiosk Machine - Test','PLDT LAOAG 2')
+  `;
+
+      Logger.log(query);
+
+      const queryResults = executeQueryAndWait(query);
+      const rows = queryResults.rows;
+
+      if (!rows || rows.length === 0) {
+        throw new Error("No data found");
+      }
+
+      return rows;
+    } catch (error) {
+      throw new Error(
+        ("Failed to retrieve store list:" + error.message) &
+        ("\nStack Trace: " + error.stack)
+      );
+    }
+  }
 }

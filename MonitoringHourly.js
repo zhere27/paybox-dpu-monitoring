@@ -10,7 +10,7 @@ function processMonitoringHourly() {
     if (environment === 'production') {
       // Step 1: Download Paybox logs
       const downloadResult = runDownloadPayboxLogsMonitoringHourly();
-      CustomLogger.logInfo(`Download completed: ${downloadResult.fileCount} files downloaded`, PROJECT_NAME, 'processMonitoringHourly()');
+      CustomLogger.logInfo(`Download completed: ${downloadResult.fileCount} files downloaded`, CONFIG.APP.NAME, 'processMonitoringHourly()');
 
       // Step 2: Process CSV files
       const folderCollections = DriveApp.getFolderById('1knJiSYo3bO4B_V3BohCi5aBhFyhhXPSW');
@@ -24,7 +24,7 @@ function processMonitoringHourly() {
           processedCount++;
         } catch (error) {
           errorCount++;
-          CustomLogger.logError(`Error processing file: ${error.message}`, PROJECT_NAME, 'processMonitoringHourly()');
+          CustomLogger.logError(`Error processing file: ${error.message}`, CONFIG.APP.NAME, 'processMonitoringHourly()');
         }
       }
     } else {
@@ -32,11 +32,12 @@ function processMonitoringHourly() {
       runLoadCsvFromDrive('1fVEIzPRsuCp15Lgzw3yphOtFEIBruwXG'); 
       processedCount++;
     }
-    CustomLogger.logInfo(`Processing completed: ${processedCount} files processed, ${errorCount} errors`, PROJECT_NAME, 'processMonitoringHourly()');
+    CustomLogger.logInfo(`Processing completed: ${processedCount} files processed, ${errorCount} errors`, CONFIG.APP.NAME, 'processMonitoringHourly()');
 
-    EmailSender.sendLogs('egalcantara@multisyscorp.com', 'Paybox - DPU Monitoring');
+    //Send Logs to Admin
+    EmailSender.sendLogs(CONFIG.APP.ADMIN.email, CONFIG.APP.NAME);
   } catch (error) {
-    CustomLogger.logError(`Fatal error in processMonitoringHourly: ${error.message}`, PROJECT_NAME, 'processMonitoringHourly()');
+    CustomLogger.logError(`Fatal error in processMonitoringHourly: ${error.message}`, CONFIG.APP.NAME, 'processMonitoringHourly()');
     EmailSender.sendLogs('egalcantara@multisyscorp.com', 'FATAL ERROR IN processMonitoringHourly()');
   }
 }
@@ -53,26 +54,26 @@ function runLoadCsvFromDrive(fileId) {
     const file = DriveApp.getFileById(fileId);
     const csvContent = file.getBlob().getDataAsString();
     const fileName = file.getName();
-    CustomLogger.logInfo(`Processing file: ${fileName}`, PROJECT_NAME, 'runLoadCsvFromDrive()');
+    CustomLogger.logInfo(`Processing file: ${fileName}`, CONFIG.APP.NAME, 'runLoadCsvFromDrive()');
 
     // Extract and format sheet name from filename
     const sheetName = extractSheetNameFromFileName(fileName);
     if (!sheetName) {
-      CustomLogger.logInfo(`Invalid filename format: ${fileName}`, PROJECT_NAME, 'runLoadCsvFromDrive()');
+      CustomLogger.logInfo(`Invalid filename format: ${fileName}`, CONFIG.APP.NAME, 'runLoadCsvFromDrive()');
       return;
     }
 
     // Check if sheet already exists
     const sheet = spreadSheet.getSheetByName(sheetName);
     if (sheet) {
-      CustomLogger.logInfo(`Sheet '${sheetName}' already exists. Skipping.`, PROJECT_NAME, 'runLoadCsvFromDrive()');
+      CustomLogger.logInfo(`Sheet '${sheetName}' already exists. Skipping.`, CONFIG.APP.NAME, 'runLoadCsvFromDrive()');
       return;
     }
 
     // Validate and process CSV content
     const csvString = validateLine(csvContent, fileName);
     if (!csvString) {
-      CustomLogger.logInfo(`No valid data found in file: ${fileName}`, PROJECT_NAME, 'runLoadCsvFromDrive()');
+      CustomLogger.logInfo(`No valid data found in file: ${fileName}`, CONFIG.APP.NAME, 'runLoadCsvFromDrive()');
       return;
     }
 
@@ -85,9 +86,9 @@ function runLoadCsvFromDrive(fileId) {
     // Refresh kiosk data
     refresh(file);
 
-    CustomLogger.logInfo(`Successfully processed file: ${fileName}`, PROJECT_NAME, 'runLoadCsvFromDrive()');
+    CustomLogger.logInfo(`Successfully processed file: ${fileName}`, CONFIG.APP.NAME, 'runLoadCsvFromDrive()');
   } catch (error) {
-    CustomLogger.logError(`Error processing file ${fileId}: ${error.message}`, PROJECT_NAME, 'runLoadCsvFromDrive()');
+    CustomLogger.logError(`Error processing file ${fileId}: ${error.message}`, CONFIG.APP.NAME, 'runLoadCsvFromDrive()');
     throw error; // Re-throw to be caught by the caller
   }
 }
@@ -133,14 +134,14 @@ function parseCsvData(csvString) {
 function validateLine(data, fileName) {
   const match = fileName.match(/_(\d{12})/);
   if (!match || !match[1]) {
-    CustomLogger.logInfo(`Invalid filename format: ${fileName}`, PROJECT_NAME, 'validateLine()');
+    CustomLogger.logInfo(`Invalid filename format: ${fileName}`, CONFIG.APP.NAME, 'validateLine()');
     return null;
   }
 
   const dateStr = match[1];
   const trnDate = parseDateFromString(dateStr);
   if (!trnDate) {
-    CustomLogger.logInfo(`Invalid date format in filename: ${fileName}`, PROJECT_NAME, 'validateLine()');
+    CustomLogger.logInfo(`Invalid date format in filename: ${fileName}`, CONFIG.APP.NAME, 'validateLine()');
     return null;
   }
 
@@ -182,7 +183,7 @@ function parseDateFromString(dateStr) {
     trnDate.setDate(trnDate.getDate());
     return trnDate;
   } catch (error) {
-    CustomLogger.logError(`Error parsing date: ${error.message}`, PROJECT_NAME, 'parseDateFromString()');
+    CustomLogger.logError(`Error parsing date: ${error.message}`, CONFIG.APP.NAME, 'parseDateFromString()');
     return null;
   }
 }
@@ -250,7 +251,7 @@ function runDownloadPayboxLogsMonitoringHourly() {
     const now = new Date();
     const dateTo = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd');
     const emailFilter = createEmailFilter(dateTo);
-    CustomLogger.logInfo(`Email filter: ${emailFilter}`, PROJECT_NAME, 'runDownloadPayboxLogsMonitoringHourly()');
+    CustomLogger.logInfo(`Email filter: ${emailFilter}`, CONFIG.APP.NAME, 'runDownloadPayboxLogsMonitoringHourly()');
 
     // Search for emails
     const threads = GmailApp.search(emailFilter);
@@ -263,12 +264,12 @@ function runDownloadPayboxLogsMonitoringHourly() {
     if (fileCount > 0) {
       manageCsvFiles();
     } else {
-      CustomLogger.logInfo('No attachments downloaded.', PROJECT_NAME, 'runDownloadPayboxLogsMonitoringHourly()');
+      CustomLogger.logInfo('No attachments downloaded.', CONFIG.APP.NAME, 'runDownloadPayboxLogsMonitoringHourly()');
     }
 
     return { success: true, fileCount };
   } catch (error) {
-    CustomLogger.logError(`Error downloading Paybox logs: ${error.message}`, PROJECT_NAME, 'runDownloadPayboxLogsMonitoringHourly()');
+    CustomLogger.logError(`Error downloading Paybox logs: ${error.message}`, CONFIG.APP.NAME, 'runDownloadPayboxLogsMonitoringHourly()');
     return { success: false, error: error.message, fileCount: 0 };
   }
 }
@@ -280,7 +281,7 @@ function runDownloadPayboxLogsMonitoringHourly() {
 function clearMonitoringFolder(folderId) {
   GDriveFilesAPI.deleteFilesInFolderById(folderId);
 
-  CustomLogger.logInfo('Cleared files in the monitoring folder.', PROJECT_NAME, 'clearMonitoringFolder()');
+  CustomLogger.logInfo('Cleared files in the monitoring folder.', CONFIG.APP.NAME, 'clearMonitoringFolder()');
 }
 
 /**
@@ -310,7 +311,7 @@ function downloadAttachments(threads, monitoringFolderId, parentFolderId) {
           const folderId = GDriveFilesAPI.getOrCreateFolder('+ Monitoring Hourly', parentFolderId);
           DriveApp.getFolderById(folderId).createFile(attachmentBlob);
           fileCount++;
-          CustomLogger.logInfo(`Downloading ${attachment.getName()}`, PROJECT_NAME, 'downloadAttachments()');
+          CustomLogger.logInfo(`Downloading ${attachment.getName()}`, CONFIG.APP.NAME, 'downloadAttachments()');
         }
       });
     });
@@ -327,7 +328,7 @@ function manageCsvFiles() {
   const files = getCsvFiles(folderCollections);
 
   if (files.length === 0) {
-    CustomLogger.logInfo('No CSV files found in the folder.', PROJECT_NAME, 'manageCsvFiles()');
+    CustomLogger.logInfo('No CSV files found in the folder.', CONFIG.APP.NAME, 'manageCsvFiles()');
     return;
   }
 
@@ -360,7 +361,7 @@ function deleteAllButLatestFile(files) {
     files[i].setTrashed(true);
   }
   // CustomLogger.logInfo(`Deleted ${files.length - 1} older CSV files, kept the latest one.`, PROJECT_NAME, 'deleteAllButLatestFile');
-  CustomLogger.logInfo(`Deleted ${files.length - 1} older CSV files, kept the latest one.`, PROJECT_NAME, 'deleteAllButLatestFile()');
+  CustomLogger.logInfo(`Deleted ${files.length - 1} older CSV files, kept the latest one.`, CONFIG.APP.NAME, 'deleteAllButLatestFile()');
 }
 
 function uploadToBQ(dataArray, maxRetries = 3, retryDelay = 2000) {
@@ -383,7 +384,7 @@ function uploadToBQ(dataArray, maxRetries = 3, retryDelay = 2000) {
   
   while (attempt <= maxRetries) {
     try {
-      CustomLogger.logInfo(`Upload attempt ${attempt + 1}/${maxRetries + 1}`, PROJECT_NAME, 'uploadToBQ');
+      CustomLogger.logInfo(`Upload attempt ${attempt + 1}/${maxRetries + 1}`, CONFIG.APP.NAME, 'uploadToBQ');
       
       // Prepare the BigQuery job configuration
       const jobConfig = {
@@ -406,13 +407,13 @@ function uploadToBQ(dataArray, maxRetries = 3, retryDelay = 2000) {
       const job = BigQuery.Jobs.insert(jobConfig, config.projectId, Utilities.newBlob(dataArray.join('\n')));
       const jobId = job.jobReference.jobId;
       
-      CustomLogger.logInfo(`BigQuery job started: ${jobId}`, PROJECT_NAME, 'uploadToBQ');
+      CustomLogger.logInfo(`BigQuery job started: ${jobId}`, CONFIG.APP.NAME, 'uploadToBQ');
 
       // Wait for job completion with timeout handling
       const jobResult = waitForJobCompletionWithTimeout(config.projectId, jobId);
 
       if (jobResult.success) {
-        CustomLogger.logInfo(`Job completed successfully: ${jobId}`, PROJECT_NAME, 'uploadToBQ');
+        CustomLogger.logInfo(`Job completed successfully: ${jobId}`, CONFIG.APP.NAME, 'uploadToBQ');
         return; // Success, exit the function
       } else {
         throw new Error(`Job failed: ${jobResult.error}`);
@@ -427,7 +428,7 @@ function uploadToBQ(dataArray, maxRetries = 3, retryDelay = 2000) {
       if (isTimeoutError && attempt <= maxRetries) {
         CustomLogger.logWarning(
           `Timeout error on attempt ${attempt}/${maxRetries + 1}: ${error.message}. Retrying in ${retryDelay}ms...`, 
-          PROJECT_NAME, 
+          CONFIG.APP.NAME, 
           'uploadToBQ'
         );
         
@@ -439,14 +440,14 @@ function uploadToBQ(dataArray, maxRetries = 3, retryDelay = 2000) {
         // Max retries exceeded
         CustomLogger.logError(
           `Max retries (${maxRetries}) exceeded. Final error: ${error.message}`, 
-          PROJECT_NAME, 
+          CONFIG.APP.NAME, 
           'uploadToBQ'
         );
         throw new Error(`Upload failed after ${maxRetries} retries: ${error.message}`);
         
       } else {
         // Non-timeout error, don't retry
-        CustomLogger.logError(`Non-retryable error: ${error.message}`, PROJECT_NAME, 'uploadToBQ');
+        CustomLogger.logError(`Non-retryable error: ${error.message}`, CONFIG.APP.NAME, 'uploadToBQ');
         throw error;
       }
     }

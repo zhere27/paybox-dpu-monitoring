@@ -1,25 +1,5 @@
-// Configuration constants
-const APEIROS_CONFIG = {
-  SERVICE_BANK: 'Apeiros',
-  ENVIRONMENT: 'testing' // Change to 'production' when ready
-};
-
-// Email recipients by environment
-const APEIROS_EMAIL_RECIPIENTS = {
-  production: {
-    to: "mtcsantiago570@gmail.com, mtcsurigao@gmail.com, valdez.ezekiel23@gmail.com",
-    cc: "sherwinamerica@yahoo.com, egalcantara@multisyscorp.com, raflorentino@multisyscorp.com, cvcabanilla@multisyscorp.com, gmmrectin@multisyscorp.com, amlaurio@multisyscorp.com",
-    bcc: "mvolbara@pldt.com.ph"
-  },
-  testing: {
-    to: "Erwin Alcantara <egalcantara@multisyscorp.com>",
-    cc: "Erwin Alcantara <egalcantara@multisyscorp.com>",
-    bcc: ""
-  }
-};
-
 function apeirosCollectionsLogic() {
-  CustomLogger.logInfo('Running Apeiros Collection Logic...', PROJECT_NAME, 'apeirosCollectionsLogic');
+  CustomLogger.logInfo('Running Apeiros Collection Logic...', CONFIG.APP.NAME, 'apeirosCollectionsLogic');
 
   try {
     // Get date information
@@ -27,23 +7,27 @@ function apeirosCollectionsLogic() {
     const { todayDate, tomorrowDate, todayDateString, tomorrowDateString } = dateInfo;
 
     // Get email recipients based on environment
-    const emailRecipients = getEmailRecipients(APEIROS_CONFIG.ENVIRONMENT);
+    const emailRecipients = getEmailRecipients(CONFIG.APEIROS.ENVIRONMENT);
 
     // Generate email subject
-    const subject = generateEmailSubject(tomorrowDate, APEIROS_CONFIG.SERVICE_BANK);
+    const subject = generateEmailSubject(tomorrowDate, CONFIG.APEIROS.SERVICE_BANK);
 
     // Get machine data and filter for eligible collections
     const eligibleCollections = getEligibleCollections(todayDate, tomorrowDate, todayDateString, tomorrowDateString, subject);
 
-    // Process collections if any are eligible
-    if (eligibleCollections.length > 0) {
+    // Process collections if any are eligible (production only)
+    if (CONFIG.BPI_INTERNAL.ENVIRONMENT === 'production' && eligibleCollections.length > 0) {
       processEligibleCollections(eligibleCollections, tomorrowDate, emailRecipients);
+    } else if (eligibleCollections.length === 0) {
+      CustomLogger.logInfo('No eligible stores for collection tomorrow.', CONFIG.APP.NAME, 'apeirosCollectionsLogic');
     } else {
-      CustomLogger.logInfo('No eligible stores for collection tomorrow.', PROJECT_NAME, 'apeirosCollectionsLogic');
+      CustomLogger.logInfo(`Testing mode: ${eligibleCollections.length} collections identified but not sent.`, CONFIG.APP.NAME, 'apeirosCollectionsLogic');
+      console.log(JSON.stringify(collections, null, 2));
     }
-
+    //Send Logs to Admin
+    EmailSender.sendLogs(CONFIG.APP.ADMIN.email, CONFIG.APP.NAME);
   } catch (error) {
-    CustomLogger.logError(`Error in apeirosCollectionsLogic: ${error}`, PROJECT_NAME, 'apeirosCollectionsLogic');
+    CustomLogger.logError(`Error in apeirosCollectionsLogic: ${error}`, CONFIG.APP.NAME, 'apeirosCollectionsLogic');
     throw error;
   }
 }
@@ -52,7 +36,7 @@ function apeirosCollectionsLogic() {
  * Get email recipients based on environment
  */
 function getEmailRecipients(environment) {
-  return APEIROS_EMAIL_RECIPIENTS[environment] || APEIROS_EMAIL_RECIPIENTS.testing;
+  return CONFIG.APEIROS.EMAIL_RECIPIENTS[environment] || CONFIG.APEIROS.EMAIL_RECIPIENTS.testing;
 }
 
 /**
@@ -71,10 +55,10 @@ function generateEmailSubject(tomorrowDate, serviceBank) {
  * Get eligible collections based on criteria
  */
 function getEligibleCollections(todayDate, tomorrowDate, todayDateString, tomorrowDateString, subject) {
-  const srvBank = APEIROS_CONFIG.SERVICE_BANK;
+  const srvBank = CONFIG.APEIROS.SERVICE_BANK;
 
   // Fetch data
-  const machineData = getMachineDataByPartner(srvBank);
+  const machineData = getMachineDataByPartner(srvBank, tomorrowDate);
   const forCollectionData = getForCollections(srvBank);
   const previouslyRequestedMachines = getPreviouslyRequestedMachineNamesByServiceBank(srvBank);
 
@@ -90,7 +74,7 @@ function getEligibleCollections(todayDate, tomorrowDate, todayDateString, tomorr
     const businessDay = businessDays[i][0];
 
     // Apply exclusion filters
-    if (shouldExcludeMachine(machineName, amountValue, lastRemark, businessDay, forCollectionData, previouslyRequestedMachines, todayDate, tomorrowDate, todayDateString, tomorrowDateString, srvBank)) {
+    if (excludeMachineApeiros(machineName, amountValue, lastRemark, businessDay, forCollectionData, previouslyRequestedMachines, todayDate, tomorrowDate, todayDateString, tomorrowDateString, srvBank)) {
       return; // Skip this machine
     }
 
@@ -105,7 +89,7 @@ function getEligibleCollections(todayDate, tomorrowDate, todayDateString, tomorr
 /**
  * Determine if machine should be excluded from collection
  */
-function shouldExcludeMachine(machineName, amountValue, lastRemark, businessDay, forCollectionData, previouslyRequestedMachines, todayDate, tomorrowDate, todayDateString, tomorrowDateString, srvBank) {
+function excludeMachineApeiros(machineName, amountValue, lastRemark, businessDay, forCollectionData, previouslyRequestedMachines, todayDate, tomorrowDate, todayDateString, tomorrowDateString, srvBank) {
   // Check 1: Already collected
   if (excludeAlreadyCollected(machineName, forCollectionData)) {
     return true;
@@ -122,7 +106,7 @@ function shouldExcludeMachine(machineName, amountValue, lastRemark, businessDay,
   }
 
   // Check 4: If not yet scheduled for collection
-  if(excludeNotYetScheduled(machineName,tomorrowDate,lastRemark)){
+  if (excludeNotYetScheduled(machineName, tomorrowDate, lastRemark)) {
     return true;
   }
 
@@ -149,7 +133,7 @@ function shouldExcludeMachine(machineName, amountValue, lastRemark, businessDay,
  * Process eligible collections
  */
 function processEligibleCollections(eligibleCollections, tomorrowDate, emailRecipients) {
-  const srvBank = APEIROS_CONFIG.SERVICE_BANK;
+  const srvBank = CONFIG.APEIROS.SERVICE_BANK;
 
   try {
     // Create hidden worksheet with collection data
@@ -158,18 +142,10 @@ function processEligibleCollections(eligibleCollections, tomorrowDate, emailReci
     // Process and send collections
     processCollectionsAndSendEmail(eligibleCollections, tomorrowDate, emailRecipients.to, emailRecipients.cc, emailRecipients.bcc, srvBank);
 
-    CustomLogger.logInfo(
-      `Processed ${eligibleCollections.length} eligible collections for ${srvBank}`,
-      PROJECT_NAME,
-      'processEligibleCollections'
-    );
+    CustomLogger.logInfo(`Processed ${eligibleCollections.length} eligible collections for ${srvBank}`, CONFIG.APP.NAME, 'processEligibleCollections');
 
   } catch (error) {
-    CustomLogger.logError(
-      `Error processing eligible collections: ${error}`,
-      PROJECT_NAME,
-      'processEligibleCollections'
-    );
+    CustomLogger.logError(`Error processing eligible collections: ${error}`, CONFIG.APP.NAME, 'processEligibleCollections');
     throw error;
   }
 }

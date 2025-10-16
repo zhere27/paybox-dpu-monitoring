@@ -32,7 +32,7 @@ function getCollectedStores() {
       setCellValue(sheet, i + 2, formattedDate, row[1].v, row[2].v, row[3].v, row[4].v);
     }
 
-    CustomLogger.logInfo(`Populated collected stores.`, PROJECT_NAME, 'getCollectedStores()');
+    CustomLogger.logInfo(`Populated collected stores.`, CONFIG.APP.NAME, 'getCollectedStores()');
 
     // Ensure changes are visible in the sheet
     SpreadsheetApp.flush();

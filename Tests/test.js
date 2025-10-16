@@ -55,7 +55,7 @@ function shouldIncludeForCollection_1(  machineName,   amountValue,   translated
     if (isExcludedStore(machineName)) {
       CustomLogger.logInfo(
         `Skipping collection for ${machineName} on ${tomorrowDateString}, part of the excluded stores.`, 
-        PROJECT_NAME, 
+        CONFIG.APP.NAME, 
         "shouldIncludeForCollection"
       );
       return false;
@@ -65,7 +65,7 @@ function shouldIncludeForCollection_1(  machineName,   amountValue,   translated
     if (!translatedBusinessDays.includes(collectionDay)) {
       CustomLogger.logInfo(
         `Skipping collection for ${machineName} on ${tomorrowDateString}, not a collection day.`, 
-        PROJECT_NAME, 
+        CONFIG.APP.NAME, 
         "shouldIncludeForCollection"
       );
       return false;
@@ -76,7 +76,7 @@ function shouldIncludeForCollection_1(  machineName,   amountValue,   translated
     if (shouldSkipWeekendCollections(srvBank, tomorrowDate)) {
       CustomLogger.logInfo(
         `Skipping collection for ${machineName} on ${tomorrowDateString}, during weekends.`, 
-        PROJECT_NAME, 
+        CONFIG.APP.NAME, 
         "shouldIncludeForCollection"
       );
       return false;
@@ -115,7 +115,7 @@ function shouldIncludeForCollection_1(  machineName,   amountValue,   translated
   } catch (error) {
     CustomLogger.logError(
       `Error in shouldIncludeForCollection(): ${error.message}\nStack: ${error.stack}`, 
-      PROJECT_NAME, 
+      CONFIG.APP.NAME, 
       "shouldIncludeForCollection()"
     );
     return false;

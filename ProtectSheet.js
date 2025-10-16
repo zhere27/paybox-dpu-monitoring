@@ -1,4 +1,3 @@
-
 /**
  * Protects all sheets in the active Google Spreadsheet that are not already protected.
  * Skips sheets that already have protection applied.
@@ -27,7 +26,7 @@ function protectAllSheets() {
     // Optional: Add editors
     // protection.addEditor("egalcantara@multisyscorp.com");
 
-    CustomLogger.logInfo("Protected sheet: " + sheet.getName(), PROJECT_NAME, 'protectAllSheets()');
+    CustomLogger.logInfo("Protected sheet: " + sheet.getName(), CONFIG.APP.NAME, 'protectAllSheets()');
   });
 }
 
@@ -41,11 +40,32 @@ function protectAllSheets() {
 function hideSheets() {
   var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   var sheets = spreadsheet.getSheets();
+  var visibleSheets = sheets.filter(function (sheet) {
+    return sheet.isSheetHidden() === false;
+  });
 
-  for (var i = 9; i < sheets.length; i++) { // Start hiding from the 10th sheet (index 9)
-    sheets[i].hideSheet();
+  // Ensure at least one sheet stays visible
+  if (visibleSheets.length <= 1) {
+    console.warn("Cannot hide any more sheets — at least one sheet must remain visible.");
+    return;
   }
-  CustomLogger.logInfo("Hide sheets after Kiosk%",PROJECT_NAME, 'hideSheets()');
+
+  // Hide sheets starting from index 10 (0-based, so this hides the 11th onward)
+  for (var i = 10; i < sheets.length; i++) {
+    // Only hide if it's currently visible
+    if (!sheets[i].isSheetHidden()) {
+      // Check again that there will be at least one visible sheet left
+      var remainingVisible = sheets.filter(s => !s.isSheetHidden()).length;
+      if (remainingVisible <= 1) {
+        console.warn("Stopped hiding to prevent all sheets from being hidden.");
+        break;
+      }
+      sheets[i].hideSheet();
+    }
+  }
+
+  console.log("Total sheets: " + sheets.length);
+  console.log("Visible sheets after hiding: " + sheets.filter(s => !s.isSheetHidden()).length);
 }
 
 /**
