@@ -756,6 +756,53 @@ function saveEligibleCollectionsToBQ(eligibleCollections) {
 
 }
 
+// =========================================================================================
+// DATA FILTERING & PROCESSING FUNCTIONS
+// =========================================================================================
+
+/**
+ * Filters and returns the list of machines eligible for collection.
+ * @param {string} subject The email subject to be used for the collection request.
+ * @param {Date} todayDate The Date object for today.
+ * @param {string} todayDateString The formatted string for today's date.
+ * @param {Date} tomorrowDate The Date object for tomorrow.
+ * @param {string} tomorrowDateString The formatted string for tomorrow's date.
+ * @param {string} srvBank The service bank to filter machines by.
+ * @param {string} environment The environment the script is running in. Set to 'production' or 'testing'.
+
+ * @returns {Array<Array<string>>} A 2D array of eligible collection data.
+ */
+function getEligibleCollections(subject, todayDate, todayDateString, tomorrowDate, tomorrowDateString, srvBank, environment) {
+  const machineData = getMachineDataByPartner(srvBank, tomorrowDate);
+  const [machineNames, , amountValues, , , , lastRemarks, businessDays] = machineData;
+  const forCollectionData = getForCollections(srvBank);
+  const previouslyRequestedMachines = getPreviouslyRequestedMachineNamesByServiceBank(srvBank, environment);
+  const eligibleCollections = [];
+
+  machineNames.forEach((machineNameArr, i) => {
+    const machine = {
+      name: machineNameArr[0],
+      amount: amountValues[i][0],
+      lastRemark: normalizeSpaces(lastRemarks[i][0]),
+      businessDay: businessDays[i][0],
+    };
+
+    if (shouldExcludeMachines(machine, forCollectionData, previouslyRequestedMachines, todayDateString, srvBank)) {
+      return; // Skip this machine
+    }
+
+    const translatedBusinessDays = translateDaysToAbbreviation(machine.businessDay.trim());
+    if (
+      shouldIncludeForCollection(machine.name, machine.amount, translatedBusinessDays, tomorrowDate, tomorrowDateString, todayDate, machine.lastRemark, srvBank)
+    ) {
+      const formattedName = formatMachineNameWithRemark(machine.name, machine.lastRemark, tomorrowDateString);
+      eligibleCollections.push([formattedName, machine.amount, srvBank, subject, machine.lastRemark]);
+    }
+  });
+
+  return eligibleCollections;
+}
+
 /**
  * Processes the final list of eligible collections.
  * In production, it creates a worksheet and sends notifications.
@@ -767,7 +814,7 @@ function saveEligibleCollectionsToBQ(eligibleCollections) {
  */
 function processEligibleCollections(collections, tomorrowDate, recipients, environment, srvBank) {
   if (collections.length === 0) {
-    CustomLogger.logInfo("No eligible stores for BPI Brinks collection tomorrow.", CONFIG.APP.NAME, "processEligibleCollections()");
+    CustomLogger.logInfo(`No eligible stores for ${srvBank} collection tomorrow.`, CONFIG.APP.NAME, "processEligibleCollections()");
     return;
   }
 
@@ -788,6 +835,8 @@ function processEligibleCollections(collections, tomorrowDate, recipients, envir
  * @param {Array} forCollectionData Data on machines already slated for collection.
  * @param {Array} previouslyRequestedMachines Machines requested yesterday.
  * @param {string} todayDateString Formatted string for today's date.
+ * @param {string} srvBank The service bank name.
+ *
  * @returns {boolean} True if the machine should be excluded, false otherwise.
  */
 function shouldExcludeMachines(machine, forCollectionData, previouslyRequestedMachines, todayDateString, srvBank) {

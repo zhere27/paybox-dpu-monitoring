@@ -42,7 +42,7 @@ const CONFIG = {
 
   BRINKS: {
     SERVICE_BANK: 'Brinks via BPI',
-    ENVIRONMENT: 'production',
+    ENVIRONMENT: 'testing',
     EMAIL_RECIPIENTS: {
       production: {
         to: "mbocampo@bpi.com.ph",
