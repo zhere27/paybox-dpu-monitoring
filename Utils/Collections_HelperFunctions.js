@@ -419,9 +419,9 @@ function excludeRequestedYesterday(previouslyRequestedMachines, machineName, srv
   return isExcluded;
 }
 
-function getPreviouslyRequestedMachineNamesByServiceBank(srvBank) {
+function getPreviouslyRequestedMachineNamesByServiceBank(srvBank, environment) {
   var machineNames = [];
-  if (CONFIG.APP.ENVIRONMENT !== 'production') { return machineNames; }
+  if (environment !== 'production') { return machineNames; }
 
   //validate srvBank if null or blank
   if (srvBank == null || srvBank == "") {
@@ -754,4 +754,66 @@ function forExclusionPartOfAdvanceNotice() {
 
 function saveEligibleCollectionsToBQ(eligibleCollections) {
 
+}
+
+/**
+ * Processes the final list of eligible collections.
+ * In production, it creates a worksheet and sends notifications.
+ * In testing, it logs the data without sending emails.
+ * @param {Array<Array<string>>} collections The list of eligible collections.
+ * @param {Date} tomorrowDate The Date object for tomorrow, used in processing.
+ * @param {object} recipients The email recipients object.
+ * @param {string} environment The current environment ("production" or "testing").
+ */
+function processEligibleCollections(collections, tomorrowDate, recipients, environment, srvBank) {
+  if (collections.length === 0) {
+    CustomLogger.logInfo("No eligible stores for BPI Brinks collection tomorrow.", CONFIG.APP.NAME, "processEligibleCollections()");
+    return;
+  }
+
+  if (environment === "production") {
+    CustomLogger.logInfo(`Processing ${collections.length} collections for production.`, CONFIG.APP.NAME, "processEligibleCollections()");
+    createHiddenWorksheetAndAddData(collections, srvBank);
+    processCollectionsAndSendEmail(collections, tomorrowDate, recipients.to, recipients.cc, recipients.bcc, srvBank);
+  } else {
+    CustomLogger.logInfo(`[TESTING MODE] Found ${collections.length} eligible collections. No emails will be sent.`, CONFIG.APP.NAME, "processEligibleCollections()");
+    // Optional: Log the collections for verification during testing
+    console.log(JSON.stringify(collections, null, 2));
+  }
+}
+
+/**
+ * Determines if a machine should be excluded based on various criteria.
+ * @param {object} machine An object containing machine details.
+ * @param {Array} forCollectionData Data on machines already slated for collection.
+ * @param {Array} previouslyRequestedMachines Machines requested yesterday.
+ * @param {string} todayDateString Formatted string for today's date.
+ * @returns {boolean} True if the machine should be excluded, false otherwise.
+ */
+function shouldExcludeMachines(machine, forCollectionData, previouslyRequestedMachines, todayDateString, srvBank) {
+  if (excludeAlreadyCollected(machine.name, forCollectionData)) {
+    return true;
+  }
+  if (excluceBasedOnRemarks(machine.lastRemark, todayDateString, machine.name)) {
+    return true;
+  }
+  if (excludeRequestedYesterday(previouslyRequestedMachines, machine.name, srvBank)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Formats the machine name, adding a revisit remark if applicable.
+ * @param {string} machineName The name of the machine.
+ * @param {string} lastRemark The last remark associated with the machine.
+ * @param {string} tomorrowDateString The formatted string for tomorrow's date.
+ * @returns {string} The formatted machine name.
+ */
+function formatMachineNameWithRemark(machineName, lastRemark, tomorrowDateString) {
+  const revisitRemark = `for revisit on ${tomorrowDateString.toLowerCase()}`;
+  if (lastRemark.toLowerCase().includes(revisitRemark)) {
+    return `${machineName} (<b>${lastRemark}</b>)`;
+  }
+  return machineName;
 }

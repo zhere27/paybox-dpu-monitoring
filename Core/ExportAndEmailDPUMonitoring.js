@@ -50,13 +50,15 @@ function exportSheetAndSendEmail() {
       }
 
       var pdfBlob = response.getBlob().setName(fileName);
-      var body = `Hi All,\n\nGood day! Please see the attached PDF file of Kiosk DPU Monitoring as of ${Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMMM d, yyyy")}.\n\nThank you,\n\n*** This is an auto-generated email, please do not reply to this email. ****`;
+      const body = generateEmailBody();
 
       // Send email with the PDF attachment
-      GmailApp.sendEmail(emailTo, subject, body, {
-        cc: emailCc,
-        attachments: [pdfBlob],
-      });
+      EmailSender.sendEmail(recipient = { to: emailTo, cc: emailCc }, subject, body, attachments = [pdfBlob], true);
+
+      // GmailApp.sendEmail(emailTo, subject, body, {
+      //   cc: emailCc,
+      //   attachments: [pdfBlob],
+      // });
 
       sheet.hideSheet();
 
@@ -74,4 +76,30 @@ function exportSheetAndSendEmail() {
     }
   }
   CustomLogger.logError("All attempts to send the email have failed.", CONFIG.APP.NAME, 'exportSheetAndSendEmail()');
+}
+
+function generateEmailBody() {
+  const formattedDate = Utilities.formatDate(
+    new Date(),
+    Session.getScriptTimeZone(),
+    "MMMM d, yyyy"
+  );
+
+  const body = `
+    <html>
+      <body style="font-family: Arial, sans-serif; color: #333;">
+        <p>Hi All,</p>
+        
+        <p>Good day! Please see the attached PDF file of Kiosk DPU Monitoring as of <strong>${formattedDate}</strong>.</p>
+        
+        <p>Thank you,</p>
+        
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #999;">
+          <p>*** This is an auto-generated email, please do not reply to this email. ****</p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  return body.trim();
 }

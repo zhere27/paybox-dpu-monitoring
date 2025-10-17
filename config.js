@@ -40,7 +40,7 @@ const CONFIG = {
     SPECIAL_MACHINES: new Set(['PLDT BANTAY', 'SMART VIGAN'])
   },
 
-  BPI_BRINKS: {
+  BRINKS: {
     SERVICE_BANK: 'Brinks via BPI',
     ENVIRONMENT: 'production',
     EMAIL_RECIPIENTS: {
@@ -78,7 +78,7 @@ const CONFIG = {
 
   APEIROS: {
     SERVICE_BANK: 'Apeiros',
-    ENVIRONMENT: 'production',  //testing
+    ENVIRONMENT: 'testing',  //testing
     EMAIL_RECIPIENTS: {
       production: {
         // to: "mtcsantiago570@gmail.com, mtcsurigao@gmail.com, valdez.ezekiel23@gmail.com",

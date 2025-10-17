@@ -1,35 +1,35 @@
 function test_excludeMachineETap() {
   var testCases = [
-    {machineName: 'PLDT MCKINLEY ROXAS', amountValue: 301700, expected: false},
-    {machineName: "SMART GAISANO MALL OZAMIZ", amountValue: 388480, expected: true},
-    {machineName: 'Store A', amountValue: 0, expected: true},
+    { machineName: 'PLDT MCKINLEY ROXAS', amountValue: 301700, expected: false },
+    { machineName: "SMART GAISANO MALL OZAMIZ", amountValue: 388480, expected: true },
+    { machineName: 'Store A', amountValue: 0, expected: true },
   ];
-  
-  testCases.forEach(function(test) {
+
+  testCases.forEach(function (test) {
     var result = excludeMachineETap(test.machineName, test.amountValue, null, null, 'Monday - Sunday', null, null, null);
     Logger.log(`Test for ${test.machineName} with amount ${test.amountValue}: expected ${test.expected}, got ${result}`);
   });
 }
 
-function test_excludeNotYetScheduled(machineName='PLDT MCKINLEY ROXAS', tomorrowDate='2025-10-15', lastRemark=""){
+function test_excludeNotYetScheduled(machineName = 'PLDT MCKINLEY ROXAS', tomorrowDate = '2025-10-15', lastRemark = "") {
   console.log(excludeNotYetScheduled(machineName, tomorrowDate, lastRemark));
 }
 
 function test_shouldIncludeForCollection() {
-  const machineName="PLDT ROBINSONS DUMAGUETE";
-  const amountValue=250000;
-  const collectionSchedule=["M.W.Sat."];
-  const tomorrowDate=new Date(2025,7,17);
-  const tomorrowDateString="Aug 18";
-  const todayDate="Aug 17";
-  const lastRequest="";
-  const srvBank="eTap";
+  const machineName = "PLDT ROBINSONS DUMAGUETE";
+  const amountValue = 250000;
+  const collectionSchedule = ["M.W.Sat."];
+  const tomorrowDate = new Date(2025, 7, 17);
+  const tomorrowDateString = "Aug 18";
+  const todayDate = "Aug 17";
+  const lastRequest = "";
+  const srvBank = "eTap";
   const translatedBusinessDays = translateDaysToAbbreviation("Monday - Sunday");
 
   if (shouldIncludeForCollection_1(machineName, amountValue, translatedBusinessDays, tomorrowDate, tomorrowDateString, todayDate, lastRequest, srvBank, collectionSchedule)) {
     console.log("should include for collection");
   }
-} 
+}
 
 /**
  * Main function to determine if a machine should be included for collection
@@ -43,19 +43,19 @@ function test_shouldIncludeForCollection() {
  * @param {string} srvBank - The bank service name
  * @returns {boolean} - True if machine should be included for collection
  */
-function shouldIncludeForCollection_1(  machineName,   amountValue,   translatedBusinessDays,   tomorrowDate,   tomorrowDateString,   todayDate,   lastRequest,   srvBank, collectionSchedule
+function shouldIncludeForCollection_1(machineName, amountValue, translatedBusinessDays, tomorrowDate, tomorrowDateString, todayDate, lastRequest, srvBank, collectionSchedule
 ) {
   try {
     const collectionDay = dayMapping[tomorrowDate.getDay()];
     const dayOfWeek = tomorrowDate.getDay();
 
     // Early returns for exclusion conditions
-    
+
     // 1. Check if excluded store
     if (isExcludedStore(machineName)) {
       CustomLogger.logInfo(
-        `Skipping collection for ${machineName} on ${tomorrowDateString}, part of the excluded stores.`, 
-        CONFIG.APP.NAME, 
+        `Skipping collection for ${machineName} on ${tomorrowDateString}, part of the excluded stores.`,
+        CONFIG.APP.NAME,
         "shouldIncludeForCollection"
       );
       return false;
@@ -64,8 +64,8 @@ function shouldIncludeForCollection_1(  machineName,   amountValue,   translated
     // 2. Check collection schedule
     if (!translatedBusinessDays.includes(collectionDay)) {
       CustomLogger.logInfo(
-        `Skipping collection for ${machineName} on ${tomorrowDateString}, not a collection day.`, 
-        CONFIG.APP.NAME, 
+        `Skipping collection for ${machineName} on ${tomorrowDateString}, not a collection day.`,
+        CONFIG.APP.NAME,
         "shouldIncludeForCollection"
       );
       return false;
@@ -75,15 +75,15 @@ function shouldIncludeForCollection_1(  machineName,   amountValue,   translated
     // 3. Check BPI weekend restrictions
     if (shouldSkipWeekendCollections(srvBank, tomorrowDate)) {
       CustomLogger.logInfo(
-        `Skipping collection for ${machineName} on ${tomorrowDateString}, during weekends.`, 
-        CONFIG.APP.NAME, 
+        `Skipping collection for ${machineName} on ${tomorrowDateString}, during weekends.`,
+        CONFIG.APP.NAME,
         "shouldIncludeForCollection"
       );
       return false;
     }
 
     // Early returns for inclusion conditions (highest priority)
-    
+
     // 1. Special collection conditions from last request
     if (hasSpecialCollectionConditions(lastRequest, tomorrowDateString)) {
       return true;
@@ -114,8 +114,8 @@ function shouldIncludeForCollection_1(  machineName,   amountValue,   translated
 
   } catch (error) {
     CustomLogger.logError(
-      `Error in shouldIncludeForCollection(): ${error.message}\nStack: ${error.stack}`, 
-      CONFIG.APP.NAME, 
+      `Error in shouldIncludeForCollection(): ${error.message}\nStack: ${error.stack}`,
+      CONFIG.APP.NAME,
       "shouldIncludeForCollection()"
     );
     return false;
@@ -815,7 +815,7 @@ function test_dryer_sorter() {
       "For collection on Jul 23",
     ],
   ];
-  srvBank="Brinks via BPI";
+  srvBank = "Brinks via BPI";
 
   // Helper: Sort by numeric value (desc), pushing NaN to the end
   const sortByAmountDescNaNLast = (a, b, index) => {
@@ -839,12 +839,20 @@ function test_dryer_sorter() {
       : (a, b) => sortByString(a, b, 0)
   );
 
-    const jsonResult = convertArrayToJson(forCollections);
+  const jsonResult = convertArrayToJson(forCollections);
   Logger.log(JSON.stringify(jsonResult, null, 2)); // Pretty print
 }
 
 
-function test_shouldCollectScheduleBasedStore(machineName='PLDT ROBINSONS DUMAGUETE', dayOfWeek=1){
+function test_shouldCollectScheduleBasedStore(machineName = 'PLDT ROBINSONS DUMAGUETE', dayOfWeek = 1) {
   var retVal = shouldCollectScheduleBasedStore(machineName, dayOfWeek);
   console.log(retVal);
+}
+
+function testEmailSender() {
+  const recipient = { to: "zhere27@gmail.com" };
+  CustomLogger.logInfo(`Testing email functionality to ${recipient.to}.`, CONFIG.APP.NAME, 'testEmailSender');
+  CustomLogger.logInfo(`Testing email error to ${recipient.to}.`, CONFIG.APP.NAME, 'testEmailSender');
+  CustomLogger.logInfo(`Testing email functionality to ${recipient.to}.`, CONFIG.APP.NAME, 'testEmailSender');
+  EmailSender.sendExecutionLogs(recipient, 'test');
 }

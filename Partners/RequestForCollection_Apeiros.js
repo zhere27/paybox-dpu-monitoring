@@ -25,7 +25,7 @@ function apeirosCollectionsLogic() {
       console.log(JSON.stringify(collections, null, 2));
     }
     //Send Logs to Admin
-    EmailSender.sendLogs(CONFIG.APP.ADMIN.email, CONFIG.APP.NAME);
+    EmailSender.sendExecutionLogs(recipient = { to: CONFIG.APP.ADMIN.email }, CONFIG.APP.NAME);
   } catch (error) {
     CustomLogger.logError(`Error in apeirosCollectionsLogic: ${error}`, CONFIG.APP.NAME, 'apeirosCollectionsLogic');
     throw error;
@@ -132,9 +132,7 @@ function excludeMachineApeiros(machineName, amountValue, lastRemark, businessDay
 /**
  * Process eligible collections
  */
-function processEligibleCollections(eligibleCollections, tomorrowDate, emailRecipients) {
-  const srvBank = CONFIG.APEIROS.SERVICE_BANK;
-
+function processEligibleCollections(eligibleCollections, tomorrowDate, emailRecipients, srvBank) {
   try {
     // Create hidden worksheet with collection data
     createHiddenWorksheetAndAddData(eligibleCollections, srvBank);

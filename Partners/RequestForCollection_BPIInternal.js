@@ -48,7 +48,7 @@ function bpiInternalCollectionsLogic() {
       console.log(JSON.stringify(collections, null, 2));
     }
     //Send Logs to Admin
-    EmailSender.sendLogs(CONFIG.APP.ADMIN.email, CONFIG.APP.NAME);
+    EmailSender.sendExecutionLogs(recipient = { to: CONFIG.APP.ADMIN.email }, CONFIG.APP.NAME);
   } catch (error) {
     CustomLogger.logError(`Error in bpiInternalCollectionsLogic: ${error}`, CONFIG.APP.NAME, 'bpiInternalCollectionsLogic');
     throw error;
@@ -134,7 +134,7 @@ function getEligibleCollectionsInternal(todayDate, tomorrowDate, todayDateString
   const srvBank = CONFIG.BPI_INTERNAL.SERVICE_BANK;
 
   // Fetch data
-  const machineData = getMachineDataByPartner(srvBank);
+  const machineData = getMachineDataByPartner(srvBank, tomorrowDate);
   const forCollectionData = getForCollections(srvBank);
   const previouslyRequestedMachines = getPreviouslyRequestedMachineNamesByServiceBank(srvBank);
 

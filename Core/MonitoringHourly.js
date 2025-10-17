@@ -29,17 +29,16 @@ function processMonitoringHourly() {
       }
     } else {
       //provide the fileid
-      runLoadCsvFromDrive('1fVEIzPRsuCp15Lgzw3yphOtFEIBruwXG'); 
+      runLoadCsvFromDrive('1fVEIzPRsuCp15Lgzw3yphOtFEIBruwXG');
       processedCount++;
     }
     CustomLogger.logInfo(`Processing completed: ${processedCount} files processed, ${errorCount} errors`, CONFIG.APP.NAME, 'processMonitoringHourly()');
-
-    //Send Logs to Admin
-    EmailSender.sendLogs(CONFIG.APP.ADMIN.email, CONFIG.APP.NAME);
   } catch (error) {
     CustomLogger.logError(`Fatal error in processMonitoringHourly: ${error.message}`, CONFIG.APP.NAME, 'processMonitoringHourly()');
-    EmailSender.sendLogs('egalcantara@multisyscorp.com', 'FATAL ERROR IN processMonitoringHourly()');
   }
+  //Send Logs to Admin
+  EmailSender.sendExecutionLogs(recipient = { to: CONFIG.APP.ADMIN.email }, CONFIG.APP.NAME);
+
 }
 
 /**
@@ -381,11 +380,11 @@ function uploadToBQ(dataArray, maxRetries = 3, retryDelay = 2000) {
   };
 
   let attempt = 0;
-  
+
   while (attempt <= maxRetries) {
     try {
       CustomLogger.logInfo(`Upload attempt ${attempt + 1}/${maxRetries + 1}`, CONFIG.APP.NAME, 'uploadToBQ');
-      
+
       // Prepare the BigQuery job configuration
       const jobConfig = {
         configuration: {
@@ -406,7 +405,7 @@ function uploadToBQ(dataArray, maxRetries = 3, retryDelay = 2000) {
       // Insert data into BigQuery with timeout handling
       const job = BigQuery.Jobs.insert(jobConfig, config.projectId, Utilities.newBlob(dataArray.join('\n')));
       const jobId = job.jobReference.jobId;
-      
+
       CustomLogger.logInfo(`BigQuery job started: ${jobId}`, CONFIG.APP.NAME, 'uploadToBQ');
 
       // Wait for job completion with timeout handling
@@ -418,33 +417,33 @@ function uploadToBQ(dataArray, maxRetries = 3, retryDelay = 2000) {
       } else {
         throw new Error(`Job failed: ${jobResult.error}`);
       }
-      
+
     } catch (error) {
       attempt++;
-      
+
       // Check if it's a timeout error
       const isTimeoutError = isTimeoutRelatedError(error);
-      
+
       if (isTimeoutError && attempt <= maxRetries) {
         CustomLogger.logWarning(
-          `Timeout error on attempt ${attempt}/${maxRetries + 1}: ${error.message}. Retrying in ${retryDelay}ms...`, 
-          CONFIG.APP.NAME, 
+          `Timeout error on attempt ${attempt}/${maxRetries + 1}: ${error.message}. Retrying in ${retryDelay}ms...`,
+          CONFIG.APP.NAME,
           'uploadToBQ'
         );
-        
+
         // Wait before retrying with exponential backoff
         Utilities.sleep(retryDelay * Math.pow(2, attempt - 1));
         continue;
-        
+
       } else if (attempt > maxRetries) {
         // Max retries exceeded
         CustomLogger.logError(
-          `Max retries (${maxRetries}) exceeded. Final error: ${error.message}`, 
-          CONFIG.APP.NAME, 
+          `Max retries (${maxRetries}) exceeded. Final error: ${error.message}`,
+          CONFIG.APP.NAME,
           'uploadToBQ'
         );
         throw new Error(`Upload failed after ${maxRetries} retries: ${error.message}`);
-        
+
       } else {
         // Non-timeout error, don't retry
         CustomLogger.logError(`Non-retryable error: ${error.message}`, CONFIG.APP.NAME, 'uploadToBQ');
@@ -457,11 +456,11 @@ function uploadToBQ(dataArray, maxRetries = 3, retryDelay = 2000) {
 function waitForJobCompletionWithTimeout(projectId, jobId, timeoutMs = 300000) { // 5 minutes default
   const startTime = Date.now();
   const pollInterval = 5000; // 5 seconds
-  
+
   try {
     while (Date.now() - startTime < timeoutMs) {
       const job = BigQuery.Jobs.get(projectId, jobId);
-      
+
       if (job.status && job.status.state === 'DONE') {
         if (job.status.errors) {
           return {
@@ -471,19 +470,19 @@ function waitForJobCompletionWithTimeout(projectId, jobId, timeoutMs = 300000) {
         }
         return { success: true };
       }
-      
+
       // Wait before next poll
       Utilities.sleep(pollInterval);
     }
-    
+
     // Timeout reached
     throw new Error(`Job ${jobId} timed out after ${timeoutMs}ms`);
-    
+
   } catch (error) {
     if (error.message.includes('timed out') || error.message.includes('timeout')) {
       throw error; // Re-throw timeout errors
     }
-    
+
     return {
       success: false,
       error: error.message
@@ -504,11 +503,11 @@ function isTimeoutRelatedError(error) {
     'write timeout',
     'service timeout'
   ];
-  
+
   const errorMessage = error.message ? error.message.toLowerCase() : '';
   const errorString = error.toString().toLowerCase();
-  
-  return timeoutKeywords.some(keyword => 
+
+  return timeoutKeywords.some(keyword =>
     errorMessage.includes(keyword) || errorString.includes(keyword)
   );
 }
@@ -523,7 +522,7 @@ function isGASTimeoutError(error) {
     /service invoked too many times/i,
     /quota exceeded/i
   ];
-  
+
   const errorMessage = error.message || error.toString();
   return gasTimeoutPatterns.some(pattern => pattern.test(errorMessage));
 }

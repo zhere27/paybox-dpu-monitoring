@@ -25,7 +25,7 @@ function eTapCollectionsLogic() {
       console.log(JSON.stringify(eligibleCollections, null, 2));
     }
     //Send Logs to Admin
-    EmailSender.sendLogs(CONFIG.APP.ADMIN.email, CONFIG.APP.NAME);
+    EmailSender.sendExecutionLogs(recipient = { to: CONFIG.APP.ADMIN.email }, CONFIG.APP.NAME);
   } catch (error) {
     CustomLogger.logError(`Error in eTapCollectionsLogic: ${error.message}\nStack: ${error.stack}`, CONFIG.APP.NAME, 'eTapCollectionsLogic');
     throw error;
@@ -56,7 +56,7 @@ function generateEmailSubjectETap(tomorrowDate, serviceBank) {
  */
 function getEligibleCollectionsETap(todayDate, tomorrowDate, todayDateString, tomorrowDateString, isTomorrowHoliday, subject) {
   // Fetch data
-  const machineData = getMachineDataByPartner(CONFIG.ETAP.SERVICE_BANK);
+  const machineData = getMachineDataByPartner(CONFIG.ETAP.SERVICE_BANK, tomorrowDate);
   const forCollectionData = getForCollections(CONFIG.ETAP.SERVICE_BANK);
   const previouslyRequestedMachines = getPreviouslyRequestedMachineNamesByServiceBank(CONFIG.ETAP.SERVICE_BANK);
 
@@ -98,7 +98,7 @@ function getEligibleCollectionsETap(todayDate, tomorrowDate, todayDateString, to
 function excludeMachineETap(machineName, amountValue, collectionSchedule, lastRemark, businessDay, forCollectionData, previouslyRequestedMachines, todayDate, tomorrowDate, todayDateString, tomorrowDateString, isTomorrowHoliday, srvBank) {
   const collectionDay = dayMapping[tomorrowDate.getDay()];
 
-  if(hasSpecialCollectionConditions(lastRemark, tomorrowDateString)){
+  if (hasSpecialCollectionConditions(lastRemark, tomorrowDateString)) {
     return false;
   }
 

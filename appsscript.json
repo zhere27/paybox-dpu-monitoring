@@ -23,14 +23,15 @@
         "developmentMode": true
       },
       {
-        "userSymbol": "EmailSender",
-        "libraryId": "1o65v8pbJo1IPelB9FOQrzr5h8MLAV4xyZMwUwoxPINipS68l97-MmXRk",
-        "version": "2"
+        "userSymbol": "CustomLogger",
+        "libraryId": "1wPcbVsnnNE1ifuiO0FCYMAtaRLpccxuDp-fsH_fqvIjvbmldAmSucn1R",
+        "version": "0",
+        "developmentMode": true
       },
       {
-        "userSymbol": "CustomLogger",
+        "userSymbol": "EmailSender",
         "version": "0",
-        "libraryId": "1wPcbVsnnNE1ifuiO0FCYMAtaRLpccxuDp-fsH_fqvIjvbmldAmSucn1R",
+        "libraryId": "1o65v8pbJo1IPelB9FOQrzr5h8MLAV4xyZMwUwoxPINipS68l97-MmXRk",
         "developmentMode": true
       }
     ]

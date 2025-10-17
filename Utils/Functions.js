@@ -289,164 +289,34 @@ function getKioskPercentage() {
   return [machineNames, percentValues, amountValues, collectionPartners, collectionSchedules, partnerAddress, lastRequests, businessDays,];
 }
 
-function getKioskPercentage(minAmount = 250000) {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = spreadsheet.getSheetByName("Kiosk %");
+/**
+ * Filters machine data based on partner, amount threshold, and collection remarks
+ * @param {Object} sheetData - Object containing all sheet column data
+ * @param {string|null} srvBank - Optional partner to filter by
+ * @param {Date} tomorrowDate - The target collection date
+ * @returns {number[]} Array of indices that meet filter criteria
+ */
+function getFilteredIndices(sheetData, srvBank, collectionDay) {
+  const amountThreshold = amountThresholds[collectionDay];
 
-  //get the column index of column with the string "Remarks"
-  const remarksColumnIndex = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues().flat().findIndex(col => col === "Remarks") + 1;
+  const filteredIndices = [];
 
-  const lastRow = sheet.getLastRow();
-  const machineNames = sheet.getRange(2, 1, lastRow - 1).getValues();
-  const partnerAddress = sheet.getRange(2, 2, lastRow - 1).getValues(); // Column B - Collection Team
-  const percentValues = sheet.getRange(2, 16, lastRow - 1).getValues(); // Column P - Current Percentage
-  const amountValues = sheet.getRange(2, 17, lastRow - 1).getValues(); // Column Q - Current Cash Amount
-  const lastRequests = sheet.getRange(2, remarksColumnIndex, lastRow - 1).getValues(); // Column R - Remarks
-  const collectionSchedules = sheet.getRange(2, 23, lastRow - 1).getValues(); // Column W - Frequency
-  const collectionPartners = sheet.getRange(2, 24, lastRow - 1).getValues(); // Column X - Servicing Bank
-  const businessDays = sheet.getRange(2, 25, lastRow - 1).getValues(); // Column Y - Business Days
+  sheetData.collectionPartners.forEach((partnerArray, index) => {
+    const partner = partnerArray[0];
+    const amount = sheetData.amountValues[index][0];
+    const remark = sheetData.lastRemarks[index][0];
 
-  // Filter arrays based on amount threshold
-  const filteredData = [];
-  for (let i = 0; i < amountValues.length; i++) {
-    if (amountValues[i][0] >= minAmount) {
-      filteredData.push({
-        machineName: machineNames[i],
-        percentValue: percentValues[i],
-        amountValue: amountValues[i],
-        collectionPartner: collectionPartners[i],
-        collectionSchedule: collectionSchedules[i],
-        partnerAddr: partnerAddress[i],
-        lastRequest: lastRequests[i],
-        businessDay: businessDays[i]
-      });
-    }
-  }
+    // Check partner filter
+    if (srvBank !== null && partner !== srvBank) return;
 
-  // Separate filtered data back into individual arrays
-  const filtered = {
-    machineNames: filteredData.map(item => item.machineName),
-    percentValues: filteredData.map(item => item.percentValue),
-    amountValues: filteredData.map(item => item.amountValue),
-    collectionPartners: filteredData.map(item => item.collectionPartner),
-    collectionSchedules: filteredData.map(item => item.collectionSchedule),
-    partnerAddress: filteredData.map(item => item.partnerAddr),
-    lastRequests: filteredData.map(item => item.lastRequest),
-    businessDays: filteredData.map(item => item.businessDay)
-  };
+    // Check amount threshold or collection remark match
+    if (!shouldIncludeMachine(amount, amountThreshold, remark, tomorrowDate)) return;
 
-  return [
-    filtered.machineNames,
-    filtered.percentValues,
-    filtered.amountValues,
-    filtered.collectionPartners,
-    filtered.collectionSchedules,
-    filtered.partnerAddress,
-    filtered.lastRequests,
-    filtered.businessDays
-  ];
+    filteredIndices.push(index);
+  });
+
+  return filteredIndices;
 }
-
-function getMachineDataByPartner(srvBank = null) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Kiosk %");
-  const lastRow = sheet.getLastRow();
-
-  // Read data from columns A–Y (starting at row 2)
-  const machineNames = sheet.getRange(2, 1, lastRow - 1).getValues(); // A
-  const partnerAddress = sheet.getRange(2, 2, lastRow - 1).getValues(); // B
-  const percentValues = sheet.getRange(2, 16, lastRow - 1).getValues(); // P
-  const amountValues = sheet.getRange(2, 17, lastRow - 1).getValues(); // Q
-  const lastRemarks = sheet.getRange(2, 18, lastRow - 1).getValues(); // R
-  const collectionSchedules = sheet.getRange(2, 23, lastRow - 1).getValues(); // W
-  const collectionPartners = sheet.getRange(2, 24, lastRow - 1).getValues(); // X
-  const businessDays = sheet.getRange(2, 25, lastRow - 1).getValues(); // Y
-
-  // Filter rows where partner matches srvBank (if provided) AND amount >= 300000
-  const filteredIndices = collectionPartners
-    .map((partner, index) => ({
-      index,
-      partner: partner[0],
-      amount: amountValues[index][0],
-    }))
-    .filter(item =>
-      (srvBank == null || item.partner === srvBank) &&
-      item.amount >= 300000
-    )
-    .map(item => item.index);
-
-  // Map filtered rows from all columns
-  const filteredMachineNames = filteredIndices.map(i => machineNames[i]);
-  const filteredPercentValues = filteredIndices.map(i => percentValues[i]);
-  const filteredAmountValues = filteredIndices.map(i => amountValues[i]);
-  const filteredCollectionPartners = filteredIndices.map(i => collectionPartners[i]);
-  const filteredCollectionSchedules = filteredIndices.map(i => collectionSchedules[i]);
-  const filteredPartnerAddress = filteredIndices.map(i => partnerAddress[i]);
-  const filteredLastRemarks = filteredIndices.map(i => lastRemarks[i]);
-  const filteredBusinessDays = filteredIndices.map(i => businessDays[i]);
-
-  return [
-    filteredMachineNames,
-    filteredPercentValues,
-    filteredAmountValues,
-    filteredCollectionPartners,
-    filteredCollectionSchedules,
-    filteredPartnerAddress,
-    filteredLastRemarks,
-    filteredBusinessDays,
-  ];
-}
-
-function getMachineDataByPartner(srvBank = null, tomorrowDate) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Kiosk %");
-  const lastRow = sheet.getLastRow();
-  const collectionDay = dayMapping[tomorrowDate.getDay()];
-  const amountThreashold = amountThresholds[collectionDay];
-
-  // Read data from columns A–Y (starting at row 2)
-  const machineNames = sheet.getRange(2, 1, lastRow - 1).getValues(); // A
-  const partnerAddress = sheet.getRange(2, 2, lastRow - 1).getValues(); // B
-  const percentValues = sheet.getRange(2, 16, lastRow - 1).getValues(); // P
-  const amountValues = sheet.getRange(2, 17, lastRow - 1).getValues(); // Q
-  const lastRemarks = sheet.getRange(2, 18, lastRow - 1).getValues(); // R
-  const collectionSchedules = sheet.getRange(2, 23, lastRow - 1).getValues(); // W
-  const collectionPartners = sheet.getRange(2, 24, lastRow - 1).getValues(); // X
-  const businessDays = sheet.getRange(2, 25, lastRow - 1).getValues(); // Y
-
-  // Filter rows where partner matches srvBank (if provided) AND amount >= 300000
-  const filteredIndices = collectionPartners
-    .map((partner, index) => ({
-      index,
-      partner: partner[0],
-      amount: amountValues[index][0],
-    }))
-    .filter(item =>
-      (srvBank == null || item.partner === srvBank) &&
-      item.amount >= amountThreashold
-    )
-    .map(item => item.index);
-
-  // Map filtered rows from all columns
-  const filteredMachineNames = filteredIndices.map(i => machineNames[i]);
-  const filteredPercentValues = filteredIndices.map(i => percentValues[i]);
-  const filteredAmountValues = filteredIndices.map(i => amountValues[i]);
-  const filteredCollectionPartners = filteredIndices.map(i => collectionPartners[i]);
-  const filteredCollectionSchedules = filteredIndices.map(i => collectionSchedules[i]);
-  const filteredPartnerAddress = filteredIndices.map(i => partnerAddress[i]);
-  const filteredLastRemarks = filteredIndices.map(i => lastRemarks[i]);
-  const filteredBusinessDays = filteredIndices.map(i => businessDays[i]);
-
-  return [
-    filteredMachineNames,
-    filteredPercentValues,
-    filteredAmountValues,
-    filteredCollectionPartners,
-    filteredCollectionSchedules,
-    filteredPartnerAddress,
-    filteredLastRemarks,
-    filteredBusinessDays,
-  ];
-}
-
 
 function translateDaysToAbbreviation(businessDays) {
   //const businessDays = "Monday - Friday";
@@ -610,3 +480,237 @@ function lookupLastTwoEntries() {
   });
 }
 
+
+
+
+// ============================================================================
+// CONFIGURATION MANAGEMENT
+// ============================================================================
+
+const SHEET_CONFIG = {
+  SHEET_NAME: 'Kiosk %',
+  START_ROW: 2,
+  COLUMN_MAP: {
+    machineNames: 1,      // A
+    partnerAddress: 2,    // B
+    percentValues: 16,    // P
+    amountValues: 17,     // Q
+    lastRemarks: 18,      // R
+    collectionSchedules: 23, // W
+    collectionPartners: 24,  // X
+    businessDays: 25      // Y
+  }
+};
+
+// Regex pattern for dynamic collection date matching
+// Matches "For collection on Oct XX" where XX is any day
+const COLLECTION_REMARK_PATTERN = /^For collection on\s+(\w+)\s+(\d{1,2})$/i;
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+/**
+ * Extracts day number from a date remark string
+ * @param {string} remark - The remark text (e.g., "For collection on Oct 17")
+ * @param {Date} targetDate - The target date to compare against
+ * @returns {boolean} True if the remark matches the target date
+ */
+function matchesCollectionRemark(remark, targetDate) {
+  if (!remark || typeof remark !== 'string') return false;
+  
+  const match = remark.match(COLLECTION_REMARK_PATTERN);
+  if (!match) return false;
+  
+  try {
+    const remarkMonth = match[1];
+    const remarkDay = parseInt(match[2]);
+    
+    const targetMonth = targetDate.toLocaleDateString('en-US', { month: 'short' });
+    const targetDay = targetDate.getDate();
+    
+    return remarkMonth.toLowerCase() === targetMonth.toLowerCase() && 
+           remarkDay === targetDay;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Determines if a machine should be included based on amount and threshold
+ * @param {number} amount - The machine amount
+ * @param {number} threshold - The amount threshold
+ * @param {string} lastRemark - The last remark for the machine
+ * @param {Date} collectionDate - The target collection date
+ * @returns {boolean} True if machine meets criteria
+ */
+function shouldIncludeMachine(amount, threshold, lastRemark, collectionDate) {
+  const amountNum = parseFloat(amount) || 0;
+  
+  // Include if amount meets threshold OR if remark matches collection date
+  if (amountNum >= threshold) return true;
+  if (matchesCollectionRemark(lastRemark, collectionDate)) return true;
+  
+  return false;
+}
+
+/**
+ * Retrieves all data from the Kiosk sheet
+ * @returns {Object} Object containing all column data
+ */
+function getSheetData() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_CONFIG.SHEET_NAME);
+  const lastRow = sheet.getLastRow();
+  const numRows = Math.max(0, lastRow - SHEET_CONFIG.START_ROW + 1);
+  
+  if (numRows === 0) {
+    return null;
+  }
+  
+  return {
+    machineNames: sheet.getRange(SHEET_CONFIG.START_ROW, SHEET_CONFIG.COLUMN_MAP.machineNames, numRows).getValues(),
+    partnerAddress: sheet.getRange(SHEET_CONFIG.START_ROW, SHEET_CONFIG.COLUMN_MAP.partnerAddress, numRows).getValues(),
+    percentValues: sheet.getRange(SHEET_CONFIG.START_ROW, SHEET_CONFIG.COLUMN_MAP.percentValues, numRows).getValues(),
+    amountValues: sheet.getRange(SHEET_CONFIG.START_ROW, SHEET_CONFIG.COLUMN_MAP.amountValues, numRows).getValues(),
+    lastRemarks: sheet.getRange(SHEET_CONFIG.START_ROW, SHEET_CONFIG.COLUMN_MAP.lastRemarks, numRows).getValues(),
+    collectionSchedules: sheet.getRange(SHEET_CONFIG.START_ROW, SHEET_CONFIG.COLUMN_MAP.collectionSchedules, numRows).getValues(),
+    collectionPartners: sheet.getRange(SHEET_CONFIG.START_ROW, SHEET_CONFIG.COLUMN_MAP.collectionPartners, numRows).getValues(),
+    businessDays: sheet.getRange(SHEET_CONFIG.START_ROW, SHEET_CONFIG.COLUMN_MAP.businessDays, numRows).getValues()
+  };
+}
+
+/**
+ * Filters machine data based on partner, amount threshold, and collection remarks
+ * @param {Object} sheetData - Object containing all sheet column data
+ * @param {string|null} srvBank - Optional partner to filter by
+ * @param {number} amountThreshold - The amount threshold for the collection day
+ * @param {Date} tomorrowDate - The target collection date
+ * @returns {number[]} Array of indices that meet filter criteria
+ */
+function getFilteredIndices(sheetData, srvBank, amountThreshold, tomorrowDate) {
+  const filteredIndices = [];
+  
+  sheetData.collectionPartners.forEach((partnerArray, index) => {
+    const partner = partnerArray[0];
+    const amount = sheetData.amountValues[index][0];
+    const remark = sheetData.lastRemarks[index][0];
+    
+    // Check partner filter
+    if (srvBank !== null && partner !== srvBank) return;
+    
+    // Check amount threshold or collection remark match
+    if (!shouldIncludeMachine(amount, amountThreshold, remark, tomorrowDate)) return;
+    
+    filteredIndices.push(index);
+  });
+  
+  return filteredIndices;
+}
+
+/**
+ * Maps filtered indices across all data columns
+ * @param {Object} sheetData - Object containing all sheet column data
+ * @param {number[]} indices - Indices to extract
+ * @returns {Object} Object containing filtered data for all columns
+ */
+function mapFilteredData(sheetData, indices) {
+  return {
+    machineNames: indices.map(i => sheetData.machineNames[i]),
+    percentValues: indices.map(i => sheetData.percentValues[i]),
+    amountValues: indices.map(i => sheetData.amountValues[i]),
+    collectionPartners: indices.map(i => sheetData.collectionPartners[i]),
+    collectionSchedules: indices.map(i => sheetData.collectionSchedules[i]),
+    partnerAddress: indices.map(i => sheetData.partnerAddress[i]),
+    lastRemarks: indices.map(i => sheetData.lastRemarks[i]),
+    businessDays: indices.map(i => sheetData.businessDays[i])
+  };
+}
+
+// ============================================================================
+// MAIN FUNCTION
+// ============================================================================
+
+/**
+ * Retrieves machine data filtered by partner and amount threshold
+ * Includes machines with amounts below threshold if lastRemarks matches collection date
+ * 
+ * @param {string|null} srvBank - Optional partner name to filter by (null = all partners)
+ * @param {Date} tomorrowDate - The target collection date for dynamic remark matching
+ * @param {number} amountThreshold - The amount threshold for the collection day
+ * @returns {Array} Array containing filtered data: [machineNames, percentValues, amountValues, collectionPartners, collectionSchedules, partnerAddress, lastRemarks, businessDays]
+ * 
+ * @example
+ * const tomorrow = new Date();
+ * tomorrow.setDate(tomorrow.getDate() + 1);
+ * const [machineNames, percentValues, amountValues, ...] = getMachineDataByPartner('BDO', tomorrow, 300000);
+ */
+function getMachineDataByPartner(srvBank = null, tomorrowDate) {
+  const collectionDay = dayMapping[tomorrowDate.getDay()];
+  const amountThreshold = amountThresholds[collectionDay];
+  try {
+    // Validate inputs
+    if (!tomorrowDate || !(tomorrowDate instanceof Date)) {
+      throw new Error('tomorrowDate must be a valid Date object');
+    }
+    
+    if (typeof amountThreshold !== 'number' || amountThreshold < 0) {
+      throw new Error('amountThreshold must be a non-negative number');
+    }
+    
+    // Retrieve all sheet data
+    const sheetData = getSheetData();
+    if (!sheetData) {
+      return [[], [], [], [], [], [], [], []];
+    }
+    
+    // Filter indices based on criteria
+    const filteredIndices = getFilteredIndices(sheetData, srvBank, amountThreshold, tomorrowDate);
+    
+    // Map and return filtered data
+    const filtered = mapFilteredData(sheetData, filteredIndices);
+    
+    return [
+      filtered.machineNames,
+      filtered.percentValues,
+      filtered.amountValues,
+      filtered.collectionPartners,
+      filtered.collectionSchedules,
+      filtered.partnerAddress,
+      filtered.lastRemarks,
+      filtered.businessDays
+    ];
+    
+  } catch (error) {
+    CustomLogger.logError(
+      `Error in getMachineDataByPartner: ${error}`,
+      'MachineDataModule',
+      'getMachineDataByPartner'
+    );
+    throw error;
+  }
+}
+
+// ============================================================================
+// USAGE EXAMPLE
+// ============================================================================
+
+/*
+const tomorrow = new Date();
+tomorrow.setDate(tomorrow.getDate() + 1);
+const amountThreshold = 300000;
+
+// Get all partners - returns array
+const allData = getMachineDataByPartner(null, tomorrow, amountThreshold);
+
+// Get specific partner - returns array
+const [
+  machineNames,
+  percentValues,
+  amountValues,
+  collectionPartners,
+  collectionSchedules,
+  partnerAddress,
+  lastRemarks,
+  businessDays
+] = getMachineDataByPartner('BDO', tomorrow, amountThreshold);
+*/

@@ -42,13 +42,7 @@ function sendEmailCollection(machineData, collectionDate, emailTo, emailCc, emai
         *** Please acknowledge this email. ****<br><br>${emailSignature}
       `;
     }
-
-    GmailApp.sendEmail(emailTo, subject, "", {
-      cc: emailCc,
-      bcc: emailBcc,
-      htmlBody: body,
-      from: "support@paybox.ph",
-    });
+    EmailSender.sendEmail(recipient = { to: emailTo, cc: emailCc, bcc: emailBcc }, subject, body);
     CustomLogger.logInfo(`Collection email sent for ${machineData.length} machines.`, CONFIG.APP.NAME, "sendEmailCollection()");
   } catch (error) {
     CustomLogger.logError(`Error in sendEmailCollection: ${error.message}\nStack: ${error.stack}`, CONFIG.APP.NAME, "sendEmailCollection()");
