@@ -13,17 +13,10 @@ function eTapCollectionsLogic() {
     const subject = generateEmailSubjectETap(tomorrowDate, CONFIG.ETAP.SERVICE_BANK);
 
     // Get machine data and filter for eligible collections
-    const eligibleCollections = getEligibleCollectionsETap(todayDate, tomorrowDate, todayDateString, tomorrowDateString, isTomorrowHoliday, subject);
+    const eligibleCollections = getEligibleCollections(subject, todayDate, todayDateString, tomorrowDate, tomorrowDateString, CONFIG.ETAP.SERVICE_BANK, CONFIG.ETAP.ENVIRONMENT);
 
-    // Process collections if any are eligible (production only)
-    if (CONFIG.ETAP.ENVIRONMENT === 'production' && eligibleCollections.length > 0) {
-      processEligibleCollectionsETap(eligibleCollections, tomorrowDate, emailRecipients);
-    } else if (eligibleCollections.length === 0) {
-      CustomLogger.logInfo('No eligible stores for collection tomorrow.', CONFIG.APP.NAME, 'eTapCollectionsLogic');
-    } else {
-      CustomLogger.logInfo(`Testing mode: ${eligibleCollections.length} collections identified but not sent.`, CONFIG.APP.NAME, 'eTapCollectionsLogic');
-      console.log(JSON.stringify(eligibleCollections, null, 2));
-    }
+    processEligibleCollections(eligibleCollections, tomorrowDate, emailRecipients, CONFIG.ETAP.ENVIRONMENT, CONFIG.ETAP.SERVICE_BANK);
+
     //Send Logs to Admin
     EmailSender.sendExecutionLogs(recipient = { to: CONFIG.APP.ADMIN.email }, CONFIG.APP.NAME);
   } catch (error) {

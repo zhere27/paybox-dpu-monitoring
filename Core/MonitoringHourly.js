@@ -202,7 +202,7 @@ function processLine(line, trnDate) {
       ? parseFloat(match.groups.bv_health + match.groups.bv_healthDecimalPlace)
       : parseFloat(match.groups.bv_health);
 
-    const formattedDateTime = formatDateTime(trnDate);
+    const formattedDateTime = formatDateTime(trnDate).replace(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/,'$1-$2-$3 $4:$5:$6');
     const current_cash_amount = isNaN(match[3]) ? 0 : match[3];
 
     return `${formattedDateTime},${match[1]},${match[2]},${current_cash_amount},${match[4]},${bill_validator}`;
@@ -210,6 +210,21 @@ function processLine(line, trnDate) {
 
   return null;
 }
+
+function formatDateTime(dateValue) {
+  // Convert number to string first
+  const dateStr = String(dateValue);
+  
+  // Validate that it’s exactly 14 digits (YYYYMMDDHHMMSS)
+  if (!/^\d{14}$/.test(dateStr)) return '';
+
+  // Convert to "YYYY-MM-DD HH:MM:SS"
+  return dateStr.replace(
+    /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/,
+    '$1-$2-$3 $4:$5:$6'
+  );
+}
+
 
 /**
  * Formats a date object into a string in the format YYYY-MM-DD HH:MM:SS
