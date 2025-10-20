@@ -92,11 +92,13 @@ function processCollectionsAndSendEmail(forCollections, tomorrowDate, emailTo, e
       if (forCollections.length > 4) {
         const collectionsForMonday = forCollections.slice(4);
         const collectionDateForMonday = getNextMonday();
-        // collectionDateForMonday.setDate(collectionDateForMonday.getDate() + 3);
         sendEmailCollection(collectionsForMonday, collectionDateForMonday, emailTo, emailCc, emailBcc, srvBank);
-      }
 
-      sendEmailCollection(forCollections.slice(0, 4), collectionDate, emailTo, emailCc, emailBcc, srvBank);
+        Utilities.sleep(5000); //5 seconds
+        sendEmailCollection(forCollections.slice(0, 4), collectionDate, emailTo, emailCc, emailBcc, srvBank);
+      }
+      
+      
     } else {
       sendEmailCollection(forCollections, collectionDate, emailTo, emailCc, emailBcc, srvBank);
     }

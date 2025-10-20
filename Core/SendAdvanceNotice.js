@@ -9,7 +9,7 @@
 // };
 
 // function sendAdvancedNotice() {
-//   CustomLogger.logInfo("Running sending DPU advanced notice...", PROJECT_NAME, "sendAdvancedNotice()");
+//   CustomLogger.logInfo("Running sending DPU advanced notice...", CONFIG.APP.NAME, "sendAdvancedNotice()");
 //   var srvBank = "";
 //   const { todayDate, tomorrowDate, todayDateString, tomorrowDateString } = getTodayAndTomorrowDates();
 //   const collectionDay = dayMapping[tomorrowDate.getDay()];
@@ -35,7 +35,7 @@
 //     const translatedBusinessDays = translateDaysToAbbreviation(businessDay.trim());
 
 //     if (inAdvanceNotice && inAdvanceNotice.includes(machineName)) {
-//       CustomLogger.logInfo(`Skipping ${machineName} for advance notice, already in advance notice...`, PROJECT_NAME, "sendAdvancedNotice()");
+//       CustomLogger.logInfo(`Skipping ${machineName} for advance notice, already in advance notice...`, CONFIG.APP.NAME, "sendAdvancedNotice()");
 //       return;
 //     }
 
@@ -58,12 +58,12 @@
 //     if (shouldIncludeForCollection(machineName, amountValue, translatedBusinessDays, tomorrowDate, tomorrowDateString, todayDate, lastRequest, srvBank)) {
 //       if (emailTo !== "") {
 //         if (CONFIG.environment === "production") {
-//           CustomLogger.logInfo(`Sending advance notice to ${machineName} to email addresses: ${emailTo}...`, PROJECT_NAME, "sendAdvancedNotice()");
+//           CustomLogger.logInfo(`Sending advance notice to ${machineName} to email addresses: ${emailTo}...`, CONFIG.APP.NAME, "sendAdvancedNotice()");
 //           addMachineToAdvanceNotice(machineName);
 //           sendEmail(machineName, formattedDate, percentValue);
 //         } else {
 //           addMachineToAdvanceNotice(machineName);
-//           CustomLogger.logInfo(`[TESTING] advance notice for ${machineName} to email addresses: ${emailTo}...`, PROJECT_NAME, "sendAdvancedNotice()");
+//           CustomLogger.logInfo(`[TESTING] advance notice for ${machineName} to email addresses: ${emailTo}...`, CONFIG.APP.NAME, "sendAdvancedNotice()");
 //         }
 //       }
 //     }

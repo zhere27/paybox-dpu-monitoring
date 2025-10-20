@@ -124,7 +124,7 @@ function resetCollectionRequests() {
   
 //   CustomLogger.logInfo(
 //     `Resetting last request value [For collection on ${yesterdayDateString}]`, 
-//     PROJECT_NAME, 
+//     CONFIG.APP.NAME, 
 //     'resetCollectionRequests'
 //   );
 
@@ -148,20 +148,20 @@ function resetCollectionRequests() {
 //       sheet.getRange(rowNum, remarksIndex).clearContent();
 //       CustomLogger.logInfo(
 //         `Cleared last request value of ${machineNamesToClear[idx]} (Row ${rowNum})`, 
-//         PROJECT_NAME, 
+//         CONFIG.APP.NAME, 
 //         'resetCollectionRequests'
 //       );
 //     });
     
 //     CustomLogger.logInfo(
 //       `Total cleared: ${rowsToClear.length} machine(s)`, 
-//       PROJECT_NAME, 
+//       CONFIG.APP.NAME, 
 //       'resetCollectionRequests'
 //     );
 //   } else {
 //     CustomLogger.logInfo(
 //       `No machines found matching "${searchString}"`, 
-//       PROJECT_NAME, 
+//       CONFIG.APP.NAME, 
 //       'resetCollectionRequests'
 //     );
 //   }
@@ -184,7 +184,7 @@ function resetCollectionRequests() {
 // //   dayAafterYesterdayDate.setDate(dayAafterYesterdayDate.getDate() - 2);
 // //   const yesterdayDateString = Utilities.formatDate(dayAafterYesterdayDate, timeZone, "MMM d");
 
-// //   CustomLogger.logInfo(`Resetting last request value [For collection on ${yesterdayDateString}]`, PROJECT_NAME, 'resetCollectionRequests');
+// //   CustomLogger.logInfo(`Resetting last request value [For collection on ${yesterdayDateString}]`, CONFIG.APP.NAME, 'resetCollectionRequests');
 
 // //   machineNames.forEach((machineNameArr, i) => {
 // //     const machineName = machineNameArr[0];
@@ -193,7 +193,7 @@ function resetCollectionRequests() {
 // //     if (lastRequest !== '') {
 // //       if (lastRequest.toLocaleLowerCase() === "for collection on " + yesterdayDateString.toLowerCase()) {
 // //         sheet.getRange(`R${i + 2}`).setValue('');
-// //         CustomLogger.logInfo(`Cleared last request value [${sheet.getRange(`R${i + 2}`).getValue()}] of ${machineName}`, PROJECT_NAME, 'resetCollectionRequests');
+// //         CustomLogger.logInfo(`Cleared last request value [${sheet.getRange(`R${i + 2}`).getValue()}] of ${machineName}`, CONFIG.APP.NAME, 'resetCollectionRequests');
 // //       }
 // //     }
 // //   });

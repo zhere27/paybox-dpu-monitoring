@@ -496,7 +496,7 @@ function isTomorrowHoliday(tomorrow) {
 
       if (holidayDate instanceof Date && holidayType && validHolidayTypes.includes(holidayType)) {
         if (holidayDate.getTime() === normalizedTomorrow.getTime()) {
-          // CustomLogger.logInfo(`Tomorrow (${formatDate(tomorrow, "MMM d, yyyy")}) is a holiday: ${holiday} - ${holidayType}`, PROJECT_NAME, "isTomorrowHoliday()");
+          // CustomLogger.logInfo(`Tomorrow (${formatDate(tomorrow, "MMM d, yyyy")}) is a holiday: ${holiday} - ${holidayType}`, CONFIG.APP.NAME, "isTomorrowHoliday()");
           return true;
         }
       }

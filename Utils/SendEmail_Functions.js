@@ -10,7 +10,7 @@
 function sendEmailCollection(machineData, collectionDate, emailTo, emailCc, emailBcc, srvBank) {
   try {
     if (!machineData || machineData.length === 0) {
-      CustomLogger.logInfo("No machine data to send in email.", PROJECT_NAME, "sendEmailCollection()");
+      CustomLogger.logInfo("No machine data to send in email.", CONFIG.APP.NAME, "sendEmailCollection()");
       return;
     }
 
@@ -49,9 +49,9 @@ function sendEmailCollection(machineData, collectionDate, emailTo, emailCc, emai
       htmlBody: body,
       from: "support@paybox.ph",
     });
-    CustomLogger.logInfo(`Collection email sent for ${machineData.length} machines.`, PROJECT_NAME, "sendEmailCollection()");
+    CustomLogger.logInfo(`Collection email sent for ${machineData.length} machines.`, CONFIG.APP.NAME, "sendEmailCollection()");
   } catch (error) {
-    CustomLogger.logError(`Error in sendEmailCollection: ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, "sendEmailCollection()");
+    CustomLogger.logError(`Error in sendEmailCollection: ${error.message}\nStack: ${error.stack}`, CONFIG.APP.NAME, "sendEmailCollection()");
     throw error;
   }
 }
@@ -70,7 +70,7 @@ function sendEmailCancellation(forCancellation, collectionDate, emailTo, emailCc
   try {
     // Cancel sending email if no records in the forCancellation
     if (!forCancellation || forCancellation.length === 0) {
-      CustomLogger.logInfo("No cancellations to send in email.", PROJECT_NAME, "sendEmailCancellation()");
+      CustomLogger.logInfo("No cancellations to send in email.", CONFIG.APP.NAME, "sendEmailCancellation()");
       return;
     }
 
@@ -108,9 +108,9 @@ function sendEmailCancellation(forCancellation, collectionDate, emailTo, emailCc
       htmlBody: body,
       from: "support@paybox.ph",
     });
-    CustomLogger.logInfo(`Cancellation email sent for ${forCancellation.length} machines.`, PROJECT_NAME, "sendEmailCancellation()");
+    CustomLogger.logInfo(`Cancellation email sent for ${forCancellation.length} machines.`, CONFIG.APP.NAME, "sendEmailCancellation()");
   } catch (error) {
-    CustomLogger.logError(`Error in sendEmailCancellation: ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, "sendEmailCancellation()");
+    CustomLogger.logError(`Error in sendEmailCancellation: ${error.message}\nStack: ${error.stack}`, CONFIG.APP.NAME, "sendEmailCancellation()");
     throw error;
   }
 }
@@ -137,9 +137,9 @@ function replyToExistingThread(subject, messageBody) {
       htmlBody: messageBody,
       from: "support@paybox.ph",
     });
-    CustomLogger.logInfo(`Reply sent to the thread with subject: "${subject}"`, PROJECT_NAME, "replyToExistingThread()");
+    CustomLogger.logInfo(`Reply sent to the thread with subject: "${subject}"`, CONFIG.APP.NAME, "replyToExistingThread()");
   } catch (error) {
-    CustomLogger.logError(`Error in replyToExistingThread: ${error.message}\nStack: ${error.stack}`, PROJECT_NAME, "replyToExistingThread()");
+    CustomLogger.logError(`Error in replyToExistingThread: ${error.message}\nStack: ${error.stack}`, CONFIG.APP.NAME, "replyToExistingThread()");
     throw error;
   }
 }

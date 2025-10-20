@@ -374,7 +374,7 @@ function deleteAllButLatestFile(files) {
   for (let i = 0; i < files.length - 1; i++) {
     files[i].setTrashed(true);
   }
-  // CustomLogger.logInfo(`Deleted ${files.length - 1} older CSV files, kept the latest one.`, PROJECT_NAME, 'deleteAllButLatestFile');
+  // CustomLogger.logInfo(`Deleted ${files.length - 1} older CSV files, kept the latest one.`, CONFIG.APP.NAME, 'deleteAllButLatestFile');
   CustomLogger.logInfo(`Deleted ${files.length - 1} older CSV files, kept the latest one.`, CONFIG.APP.NAME, 'deleteAllButLatestFile()');
 }
 
